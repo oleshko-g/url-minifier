@@ -66,6 +66,10 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusCreated)
 }
 
+func unminifyURL(res http.ResponseWriter, req *http.Request) {
+
+}
+
 func main() {
 	srv := &http.Server{
 		Addr: ":" + defaultTCPPort,
