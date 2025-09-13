@@ -62,8 +62,7 @@ jobs:
 
       - name: Build server binary
         run: |
-          cd cmd/shortener
-          go build -buildvcs=false -o shortener
+          go build -buildvcs=false -o minifier
 
       - name: "Code increment #1"
         if: |
@@ -94,7 +93,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration1$ \
-              -binary-path=cmd/shortener/shortener
+              -binary-path=minifier
 
       - name: "Code increment #2"
         if: |
@@ -180,7 +179,7 @@ jobs:
         run: |
           SERVER_PORT=$(random unused-port)
           shortenertest -test.v -test.run=^TestIteration4$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -server-port=$SERVER_PORT
 
       - name: "Code increment #5"
@@ -209,7 +208,7 @@ jobs:
         run: |
           SERVER_PORT=$(random unused-port)
           shortenertest -test.v -test.run=^TestIteration5$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -server-port=$SERVER_PORT
 
       - name: "Code increment #6"
@@ -261,7 +260,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration7$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -source-path=.
 
       - name: "Code increment #8"
@@ -286,7 +285,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration8$ \
-              -binary-path=cmd/shortener/shortener
+              -binary-path=.
 
       - name: "Code increment #9"
         if: |
@@ -310,7 +309,7 @@ jobs:
         run: |
           TEMP_FILE=$(random tempfile)
           shortenertest -test.v -test.run=^TestIteration9$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=. \
               -source-path=. \
               -file-storage-path=$TEMP_FILE
 
@@ -334,7 +333,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration10$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=. \
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
@@ -358,7 +357,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration11$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -380,7 +379,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration12$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -401,7 +400,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration13$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -421,7 +420,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration14$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -440,7 +439,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration15$ \
-              -binary-path=cmd/shortener/shortener \
+              -binary-path=minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
