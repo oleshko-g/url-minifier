@@ -15,7 +15,6 @@ const defaultTCPPort string = "8080"
 
 func init() {
 	http.HandleFunc("POST /", minifyURLHandler)
-	http.HandleFunc("GET /{id}", unminifyURL)
 }
 
 var minifiedURLs = make(map[string]string)
@@ -64,10 +63,6 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("minifiedURL: %s", minifiedURL)
 	minifiedURLs[minifiedURL] = string(data)
 	res.WriteHeader(http.StatusCreated)
-}
-
-func unminifyURL(res http.ResponseWriter, req *http.Request) {
-
 }
 
 func main() {
