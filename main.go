@@ -9,12 +9,14 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 const defaultTCPPort string = "8080"
 
 func init() {
 	http.HandleFunc("POST /", minifyURLHandler)
+	http.HandleFunc("GET /{id}", unMinifyURLHandler)
 }
 
 var minifiedURLs = make(map[string]string)
@@ -61,8 +63,11 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 
 	minifiedURL := "http://" + req.Host + "/" + encode(data)
 	log.Printf("minifiedURL: %s", minifiedURL)
-	minifiedURLs[minifiedURL] = string(data)
+	minifiedURLs[encode(data)] = string(data)
+	log.Printf("minifiedURLs:\n%+v\n", minifiedURLs)
+	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
+	res.Write([]byte(minifiedURL))
 }
 
 func main() {
@@ -71,4 +76,23 @@ func main() {
 	}
 	log.Printf("Minifier is listening on address: %s\n", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func unMinifyURLHandler(res http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	if id == "" {
+		respondBadRequest(res, errors.New("empty id"))
+	}
+
+	URL, ok := minifiedURLs[id]
+	if !ok {
+		respondBadRequest(res, errors.New("URL is not found"))
+	}
+	res.Header().Add("Location", URL)
+	res.Header().Set("Content-Length", strconv.Itoa(len(URL)))
+	log.Printf("%+v\n", res)
+	res.Header().Set("Content-Type", "text/plain")
+	log.Printf("%+v\n", res)
+	res.WriteHeader(http.StatusTemporaryRedirect)
+
 }
