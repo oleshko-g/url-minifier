@@ -48,17 +48,20 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	err := validateContenType(req.Header, "text/plain")
 	if err != nil {
 		respondBadRequest(res, err)
+		return
 	}
 	log.Printf("%+v", req)
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		respondBadRequest(res, err)
+		return
 	}
 
 	_, err = url.Parse(string(data))
 	if err != nil {
 		respondBadRequest(res, err)
+		return
 	}
 
 	minifiedURL := "http://" + req.Host + "/" + encode(data)
@@ -82,11 +85,13 @@ func unMinifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	if id == "" {
 		respondBadRequest(res, errors.New("empty id"))
+		return
 	}
 
 	URL, ok := minifiedURLs[id]
 	if !ok {
 		respondBadRequest(res, errors.New("URL is not found"))
+		return
 	}
 	res.Header().Add("Location", URL)
 	res.Header().Set("Content-Length", strconv.Itoa(len(URL)))
