@@ -69,8 +69,10 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	minifiedURLs[encode(data)] = string(data)
 	log.Printf("minifiedURLs:\n%+v\n", minifiedURLs)
 	res.Header().Set("Content-Type", "text/plain")
+	res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
 	res.WriteHeader(http.StatusCreated)
 	res.Write([]byte(minifiedURL))
+	log.Printf("%+v\n", res)
 }
 
 func main() {
