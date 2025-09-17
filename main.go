@@ -10,14 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/go-chi/chi"
 )
 
 const defaultTCPPort string = "8080"
-
-func init() {
-	http.HandleFunc("POST /", minifyURLHandler)
-	http.HandleFunc("GET /{id}", unMinifyURLHandler)
-}
 
 var minifiedURLs = make(map[string]string)
 
@@ -75,8 +72,12 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	r := chi.NewRouter()
+	r.Post("/", minifyURLHandler)
+	r.Get("/{id}", unMinifyURLHandler)
 	srv := &http.Server{
-		Addr: ":" + defaultTCPPort,
+		Addr:    ":" + defaultTCPPort,
+		Handler: r,
 	}
 	log.Printf("Minifier is listening on address: %s\n", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
