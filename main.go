@@ -50,7 +50,6 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 		respondBadRequest(res, err)
 		return
 	}
-	log.Printf("%+v", req)
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -96,10 +95,7 @@ func unMinifyURLHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Header().Add("Location", URL)
-	res.Header().Set("Content-Length", strconv.Itoa(len(URL)))
-	log.Printf("%+v\n", res)
 	res.Header().Set("Content-Type", "text/plain")
-	log.Printf("%+v\n", res)
 	res.WriteHeader(http.StatusTemporaryRedirect)
-
+	log.Printf("%#v\n", res)
 }
