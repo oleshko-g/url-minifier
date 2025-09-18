@@ -45,6 +45,8 @@ func Test_minifyURLHandler(t *testing.T) {
 			minifyURLHandler(w, tt.req)
 			res := w.Result()
 			body, err := io.ReadAll(res.Body)
+			require.NoError(t, err)
+			defer res.Body.Close()
 			assert.NoError(t, err)
 			got := result{
 				code:          res.StatusCode,
@@ -94,6 +96,7 @@ func Test_unMinifyURLHandler(t *testing.T) {
 			rec := httptest.NewRecorder()
 			unMinifyURLHandler(rec, tt.req)
 			res := rec.Result()
+			defer res.Body.Close()
 
 			require.Equal(t, tt.want.statusCode, res.StatusCode)
 			l, err := res.Location()
