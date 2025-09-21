@@ -14,8 +14,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-const defaultTCPPort string = "8080"
-
 var minifiedURLs = make(map[string]string)
 
 func validateContenType(h http.Header, value string) error {
@@ -76,7 +74,7 @@ func main() {
 	r.Post("/", minifyURLHandler)
 	r.Get("/{id}", unMinifyURLHandler)
 	srv := &http.Server{
-		Addr:    ":" + defaultTCPPort,
+		Addr:    defaultConfig.a.String(),
 		Handler: r,
 	}
 	log.Printf("Minifier is listening on address: %s\n", srv.Addr)
