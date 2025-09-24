@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,7 @@ type result struct {
 }
 
 func Test_minifyURLHandler(t *testing.T) {
+	cfg := defaultConfig
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
@@ -33,8 +35,8 @@ func Test_minifyURLHandler(t *testing.T) {
 			want: result{
 				code:          201,
 				contentType:   "text/plain",
-				contentLength: "30",
-				body:          []byte("http://example.com/DdGYF429IL4"),
+				contentLength: strconv.Itoa(len(cfg.b.String()) + 12),
+				body:          []byte(cfg.b.String() + "/DdGYF429IL4"),
 			},
 		},
 	}
