@@ -78,8 +78,8 @@ func (b *baseURL) Set(s string) error {
 	if url.Scheme == "" {
 		return errors.New("error parsing base URL. empty scheme")
 	}
-	if url.Scheme != "https" {
-		return errors.New("error parsing base URL. scheme MUST be 'https'")
+	if url.Scheme != "http" {
+		return errors.New("error parsing base URL. scheme MUST be 'http'")
 	}
 
 	b.scheme = url.Scheme
