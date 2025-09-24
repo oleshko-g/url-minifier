@@ -24,11 +24,11 @@ func Test_newMinifierConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "baseURL: https://localhost:9000",
-			args: []string([]string{"-b", "https://localhost:9000"}),
+			name: "baseURL: http://localhost:9000",
+			args: []string([]string{"-b", "http://localhost:9000"}),
 			want: config{
 				a:      defaultConfig.a,
-				b:      baseURL{scheme: "https", address: address{host: "localhost", port: "9000"}},
+				b:      baseURL{scheme: "http", address: address{host: "localhost", port: "9000"}},
 				maxLen: defaultConfig.maxLen,
 			},
 		},
@@ -39,7 +39,7 @@ func Test_newMinifierConfig(t *testing.T) {
 			cfg := defaultConfig
 			fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 			fs.Var(&cfg.a, "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
-			fs.Var(&cfg.b, "b", "Default: `https://localhost:8080`. Set the base URL for minified URLs")
+			fs.Var(&cfg.b, "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
 			fs.Parse(tt.args)
 			got := cfg
 			assert.Equal(t, tt.want, got)

@@ -22,7 +22,7 @@ var (
 
 func init() {
 	flag.Var(&cfg.a, "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
-	flag.Var(&cfg.b, "b", "Default: `https://localhost:8080`. Set the base URL for minified URLs")
+	flag.Var(&cfg.b, "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
 }
 
 func main() {
