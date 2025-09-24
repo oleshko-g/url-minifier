@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
+	"flag"
 	"io"
 	"log"
 	"mime"
@@ -14,33 +15,31 @@ import (
 	"github.com/go-chi/chi"
 )
 
-var minifiedURLs = make(map[string]string)
+var (
+	minifiedURLs = make(map[string]string)
+	cfg          = defaultConfig
+)
 
-func validateContenType(h http.Header, value string) error {
-	mediaType, _, errParseMediaType := mime.ParseMediaType(h.Get("Content-Type"))
-	if errParseMediaType != nil {
-		return errParseMediaType
-	}
-
-	if mediaType != value {
-		return errors.New("error: Content-Type isn't " + value)
-	}
-
-	return nil
+func init() {
+	flag.Var(&cfg.a, "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
+	flag.Var(&cfg.b, "b", "Default: `https://localhost:8080`. Set the base URL for minified URLs")
 }
 
-func encode(data []byte) string {
-	checksum := md5.Sum(data)
-	return base64.RawURLEncoding.EncodeToString(checksum[:8])
-}
-
-func respondBadRequest(res http.ResponseWriter, err error) {
-	res.WriteHeader(http.StatusBadRequest)
-	log.Printf("error: %s", err)
+func main() {
+	flag.Parse()
+	r := chi.NewRouter()
+	r.Post("/", minifyURLHandler)
+	r.Get("/{id}", unMinifyURLHandler)
+	srv := &http.Server{
+		Addr:    cfg.a.String(),
+		Handler: r,
+	}
+	log.Printf("Minifier is listening on address: %s\n", srv.Addr)
+	log.Fatal(srv.ListenAndServe())
 }
 
 func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
-	err := validateContenType(req.Header, "text/plain")
+	err := validateContentType(req.Header, "text/plain")
 	if err != nil {
 		respondBadRequest(res, err)
 		return
@@ -58,7 +57,7 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	minifiedURL := "http://" + req.Host + "/" + encode(data)
+	minifiedURL := cfg.b.String() + "/" + encode(data)
 	log.Printf("minifiedURL: %s", minifiedURL)
 	minifiedURLs[encode(data)] = string(data)
 	log.Printf("minifiedURLs:\n%+v\n", minifiedURLs)
@@ -69,16 +68,27 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 	log.Printf("%+v\n", res)
 }
 
-func main() {
-	r := chi.NewRouter()
-	r.Post("/", minifyURLHandler)
-	r.Get("/{id}", unMinifyURLHandler)
-	srv := &http.Server{
-		Addr:    defaultConfig.a.String(),
-		Handler: r,
+func validateContentType(h http.Header, value string) error {
+	mediaType, _, errParseMediaType := mime.ParseMediaType(h.Get("Content-Type"))
+	if errParseMediaType != nil {
+		return errParseMediaType
 	}
-	log.Printf("Minifier is listening on address: %s\n", srv.Addr)
-	log.Fatal(srv.ListenAndServe())
+
+	if mediaType != value {
+		return errors.New("error: Content-Type isn't " + value)
+	}
+
+	return nil
+}
+
+func encode(data []byte) string {
+	checksum := md5.Sum(data)
+	return base64.RawURLEncoding.EncodeToString(checksum[:cfg.maxLen])
+}
+
+func respondBadRequest(res http.ResponseWriter, err error) {
+	res.WriteHeader(http.StatusBadRequest)
+	log.Printf("error: %s", err)
 }
 
 func unMinifyURLHandler(res http.ResponseWriter, req *http.Request) {

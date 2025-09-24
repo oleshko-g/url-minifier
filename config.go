@@ -2,47 +2,44 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"net/url"
+	"strings"
 )
 
-var defaultConfig = minifierConfig{
-	a: minifierAddress{
+var defaultConfig = config{
+	a: address{
 		host: "localhost",
 		port: "8080",
 	},
-	b: minifierBaseURL{
-		scheme: "https://",
-		minifierAddress: minifierAddress{
+	b: baseURL{
+		scheme: "http",
+		address: address{
 			host: "localhost",
 			port: "8080",
 		},
 	},
+	maxLen: 8,
 }
 
-func newMinifierConfig() (minifierConfig, error) {
-	var cfg minifierConfig
-	flag.CommandLine.Var(&cfg.a, "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
-	flag.CommandLine.Var(&cfg.b, "b", "Default: `https://localhost:8080`. Set the base URL for minified URLs")
-	flag.Parse()
-	return cfg, nil
+type config struct {
+	a      address
+	b      baseURL
+	maxLen int
 }
 
-type minifierConfig struct {
-	a minifierAddress
-	b minifierBaseURL
-}
-
-type minifierAddress struct {
+type address struct {
 	host string
 	port string
 }
 
-func (a minifierAddress) String() string {
+func (a address) String() string {
 	return a.host + ":" + a.port
 }
 
-func (a minifierAddress) Set(s string) error {
+func (a *address) Set(s string) error {
+	if strings.HasPrefix(s, "localhost:") {
+		s = "http://" + s
+	}
 	url, err := url.Parse(s)
 	if err != nil {
 		return err
@@ -60,17 +57,17 @@ func (a minifierAddress) Set(s string) error {
 	return nil
 }
 
-type minifierBaseURL struct {
+type baseURL struct {
 	scheme string
-	minifierAddress
+	address
 }
 
-func (b minifierBaseURL) String() string {
-	return b.scheme + b.minifierAddress.String()
+func (b baseURL) String() string {
+	return b.scheme + "://" + b.address.String()
 }
 
-func (b minifierBaseURL) Set(s string) error {
-	err := b.minifierAddress.Set(s)
+func (b *baseURL) Set(s string) error {
+	err := b.address.Set(s)
 	if err != nil {
 		return err
 	}
@@ -81,8 +78,8 @@ func (b minifierBaseURL) Set(s string) error {
 	if url.Scheme == "" {
 		return errors.New("error parsing base URL. empty scheme")
 	}
-	if url.Scheme != "https://" {
-		return errors.New("error parsing base URL. scheme MUST be 'https://'")
+	if url.Scheme != "https" {
+		return errors.New("error parsing base URL. scheme MUST be 'https'")
 	}
 
 	b.scheme = url.Scheme
