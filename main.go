@@ -13,11 +13,23 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 )
 
+type storage interface {
+	Save(key, value string) error
+	Retrieve(key string) (value string, err error)
+}
+
+type state struct {
+	storage storage
+}
+
 var (
-	minifiedURLs = make(map[string]string)
-	cfg          = defaultConfig
+	s = state{
+		storage: memory.NewStrRecords(),
+	}
+	cfg = defaultConfig
 )
 
 func init() {
@@ -59,8 +71,8 @@ func minifyURLHandler(res http.ResponseWriter, req *http.Request) {
 
 	minifiedURL := cfg.b.String() + "/" + encode(data)
 	log.Printf("minifiedURL: %s", minifiedURL)
-	minifiedURLs[encode(data)] = string(data)
-	log.Printf("minifiedURLs:\n%+v\n", minifiedURLs)
+	s.storage.Save(encode(data), string(data))
+	log.Printf("minifiedURLs:\n%+v\n", s.storage)
 	res.Header().Set("Content-Type", "text/plain")
 	res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
 	res.WriteHeader(http.StatusCreated)
@@ -98,12 +110,12 @@ func unMinifyURLHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	URL, ok := minifiedURLs[id]
-	if !ok {
+	url, err := s.storage.Retrieve(id)
+	if err != nil {
 		respondBadRequest(res, errors.New("URL is not found"))
 		return
 	}
-	res.Header().Add("Location", URL)
+	res.Header().Add("Location", url)
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusTemporaryRedirect)
 	log.Printf("%#v\n", res)

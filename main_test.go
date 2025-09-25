@@ -93,7 +93,8 @@ func Test_unMinifyURLHandler(t *testing.T) {
 			// preset the request and the environment
 			id := tt.req.RequestURI[1:] // slice off leading "/"
 			tt.req.SetPathValue("id", id)
-			minifiedURLs[id] = tt.want.headers["Location"]
+
+			s.storage.Save(id, tt.want.headers["Location"])
 
 			rec := httptest.NewRecorder()
 			unMinifyURLHandler(rec, tt.req)
