@@ -13,3 +13,5 @@
 
 # Binary
 minifier
+
+!**minifier/

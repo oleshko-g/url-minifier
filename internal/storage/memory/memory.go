@@ -23,6 +23,7 @@ func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.m[key] = value
+	// log.Printf(s.String())
 	return nil
 }
 
