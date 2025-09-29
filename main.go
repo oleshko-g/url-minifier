@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/oleshko-g/url-minifier/internal/minifier"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
 )
