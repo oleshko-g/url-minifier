@@ -12,14 +12,20 @@ type MockService struct {
 	MinifiedIDs  map[string]string // key -- minified ID, value -- original URL
 }
 
-// NewMockMinifier initializes MockMiinifier's fields used for testing:
+// NewMockMinifier initializes MockMinifier's fields used for testing:
 //   - OriginalURLs
 //   - MinifiedIDs
 func NewMockMinifier() *MockService {
-	return &MockService{
+	mockService := &MockService{
 		OriginalURLs: make(map[string]string),
 		MinifiedIDs:  make(map[string]string),
+		Config: Config{
+			MaxLen: 8,
+		},
 	}
+	mockService.Config.BaseURL().Set("http://localhost:8080/")
+
+	return mockService
 }
 
 func (s *MockService) MinifyURL(url string) (minifiedURL string, err error) {
@@ -36,10 +42,10 @@ func (s *MockService) MinifyURL(url string) (minifiedURL string, err error) {
 }
 
 func (s *MockService) UnMinifyURL(id string) (url string, err error) {
-	origianlURL, ok := s.MinifiedIDs[id]
+	url, ok := s.MinifiedIDs[id]
 	if !ok {
 		return "", storageErrors.NotFound
 	}
 
-	return origianlURL, nil
+	return url, nil
 }

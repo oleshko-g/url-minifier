@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
@@ -15,6 +16,10 @@ type testMinifierResponse struct {
 	statusCode int
 	headers    map[string]string
 	body       []byte
+}
+
+func newTestServer(ms *minifier.MockService) *Server {
+	return NewServer(ms)
 }
 
 func TestServer_minifyURLHandler(t *testing.T) {
@@ -67,6 +72,53 @@ func TestServer_minifyURLHandler(t *testing.T) {
 			}
 
 			require.Equal(t, tt.want.body, body)
+		})
+	}
+}
+
+func Test_unMinifyURLHandler(t *testing.T) {
+	mockService := minifier.NewMockMinifier()
+	testServer := newTestServer(mockService)
+
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		originalURL string
+		minifiedID  string
+		want        testMinifierResponse
+	}{
+		{
+			name:        "correct unMinify https://practicum.yandex.ru/",
+			minifiedID:  "DdGYF429IL4",
+			originalURL: "https://practicum.yandex.ru/",
+			want: testMinifierResponse{
+				statusCode: http.StatusTemporaryRedirect,
+				headers: map[string]string{
+					"Content-Length": "30",
+					"Location":       "https://practicum.yandex.ru/",
+				},
+				body: nil,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockService.MinifiedIDs[tt.minifiedID] = tt.originalURL
+
+			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
+			req.SetPathValue("id", tt.minifiedID)
+
+			w := httptest.NewRecorder()
+			testServer.unMinifyURLHandler().ServeHTTP(w, req)
+			res := w.Result()
+			defer res.Body.Close()
+
+			require.Equal(t, tt.want.statusCode, res.StatusCode)
+			l, err := res.Location()
+			require.NoError(t, err)
+
+			require.Equal(t, tt.want.headers["Location"], l.String())
 		})
 	}
 }
