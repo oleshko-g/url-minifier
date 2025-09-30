@@ -32,7 +32,7 @@ func (s *strRecords) Retrieve(key string) (value string, err error) {
 	defer s.mux.RUnlock()
 	v, ok := s.m[key]
 	if !ok {
-		return v, errors.NotFound
+		return v, errors.ErrNotFound
 	}
 	return v, nil
 }

@@ -44,7 +44,7 @@ func (s *MockService) MinifyURL(url string) (minifiedURL string, err error) {
 func (s *MockService) UnMinifyURL(id string) (url string, err error) {
 	url, ok := s.MinifiedIDs[id]
 	if !ok {
-		return "", storageErrors.NotFound
+		return "", storageErrors.ErrNotFound
 	}
 
 	return url, nil
