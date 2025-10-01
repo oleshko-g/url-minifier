@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	baseURL baseURL
+	baseURL baseURL // domain parameter because the http server host address could be different
 	MaxLen  int
 }
 
+// BaseURL returns a pointer to baseURL unexported type. Getter is used in case the structure of baseURL changes
 func (c *Config) BaseURL() *baseURL {
 	return &c.baseURL
 }

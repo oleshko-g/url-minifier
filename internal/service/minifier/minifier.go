@@ -7,16 +7,16 @@ import (
 )
 
 type Service struct {
-	storage Storage
+	storage Storager
 	Config
 }
 
-type Storage interface {
+type Storager interface {
 	Save(key, value string) error
 	Retrieve(key string) (value string, err error)
 }
 
-func New(s Storage) *Service {
+func New(s Storager) *Service {
 	return &Service{
 		storage: s,
 	}
