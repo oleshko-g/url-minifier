@@ -23,12 +23,17 @@ func New(s Storager) *Service {
 }
 
 func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
-	minifiedURL = s.baseURL.String() + "/" + encode([]byte(url), s.MaxLen)
-	log.Printf("minifiedURL: %s", minifiedURL)
-	err = s.storage.Save(encode([]byte(url), s.MaxLen), url)
+	minifiedID := encode([]byte(url), s.MaxLen)
+
+	err = s.storage.Save(minifiedID, url)
 	if err != nil {
 		return "", err
 	}
+
+	minifiedURL = s.Config.BaseURL().String() + "/" + minifiedID
+
+	log.Printf("minifiedURL: %s", minifiedURL)
+
 	return minifiedURL, nil
 }
 

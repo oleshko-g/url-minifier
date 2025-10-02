@@ -19,6 +19,7 @@ type baseURL struct {
 	scheme string
 	host   string
 	port   string
+	Source string
 }
 
 func (b baseURL) String() string {
@@ -40,11 +41,11 @@ func (b *baseURL) Set(s string) error {
 	b.scheme = url.Scheme
 
 	if b.host = url.Hostname(); url.Hostname() == "" {
-		return errors.New("error parsing address. empty host")
+		return errors.New("error parsing Base URL. empty host")
 	}
 
 	if b.port = url.Port(); url.Port() == "" {
-		return errors.New("error parsing address. empty port")
+		return errors.New("error parsing Base URL. empty port")
 	}
 
 	return nil

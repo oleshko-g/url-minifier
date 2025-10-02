@@ -7,23 +7,24 @@ import (
 )
 
 type Config struct {
-	address Address
+	address address
 }
 
-func (c *Config) Address() *Address {
+func (c *Config) Address() *address {
 	return &c.address
 }
 
-type Address struct {
-	host string
-	port string
+type address struct {
+	host   string
+	port   string
+	Source string
 }
 
-func (a Address) String() string {
+func (a address) String() string {
 	return a.host + ":" + a.port
 }
 
-func (a *Address) Set(s string) error {
+func (a *address) Set(s string) error {
 	if strings.HasPrefix(s, "localhost:") {
 		s = "http://" + s
 	}
