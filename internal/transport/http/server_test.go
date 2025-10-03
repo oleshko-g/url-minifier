@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,15 +19,12 @@ type testMinifierResponse struct {
 	body       []byte
 }
 
-func newTestServer(ms *minifier.MockService) *Server {
-	return NewServer(ms)
-}
-
 func TestServer_minifyURLHandler(t *testing.T) {
-	mockService := minifier.NewMockMinifier()
-	mockService.Config.MaxLen = 8
-	mockService.Config.BaseURL().Set("http://localhost:8080/")
-	server := NewServer(mockService)
+	storage := memory.NewStrRecords()
+	service := minifier.New(storage)
+	service.Config.MaxLen = 8
+	service.Config.BaseURL().Set("http://localhost:8080/")
+	server := NewServer(service)
 
 	tests := []struct {
 		name        string // description of this test case
@@ -42,7 +40,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 				statusCode: 201,
 				headers: map[string]string{
 					"Content-Type":   "text/plain",
-					"Content-Length": strconv.Itoa(len(mockService.BaseURL().String()) + 12),
+					"Content-Length": strconv.Itoa(len(service.BaseURL().String()) + 12),
 				},
 			},
 		},
@@ -50,9 +48,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockService.OriginalURLs[tt.originalURL] = tt.minifiedID
-			mockService.MinifiedIDs[tt.minifiedID] = tt.originalURL
-			tt.want.body = []byte(mockService.Config.BaseURL().String() + "/" + tt.minifiedID)
+			tt.want.body = []byte(service.Config.BaseURL().String() + "/" + tt.minifiedID)
 
 			req := httptest.NewRequest("POST", "/", bytes.NewBuffer([]byte("https://practicum.yandex.ru/")))
 			req.Header.Set("Content-Type", "text/plain")
@@ -77,8 +73,11 @@ func TestServer_minifyURLHandler(t *testing.T) {
 }
 
 func Test_unMinifyURLHandler(t *testing.T) {
-	mockService := minifier.NewMockMinifier()
-	testServer := newTestServer(mockService)
+	storage := memory.NewStrRecords()
+	service := minifier.New(storage)
+	service.Config.MaxLen = 8
+	service.Config.BaseURL().Set("http://localhost:8080/")
+	server := NewServer(service)
 
 	tests := []struct {
 		name string // description of this test case
@@ -104,13 +103,13 @@ func Test_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockService.MinifiedIDs[tt.minifiedID] = tt.originalURL
+			storage.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)
 
 			w := httptest.NewRecorder()
-			testServer.unMinifyURLHandler().ServeHTTP(w, req)
+			server.unMinifyURLHandler().ServeHTTP(w, req)
 			res := w.Result()
 			defer res.Body.Close()
 
