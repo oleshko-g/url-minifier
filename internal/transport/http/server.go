@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -41,6 +42,11 @@ func NewServer(s service) *Server {
 			srv.unMinifyURLHandler()))
 	srv.server.Handler = r
 
+	r.Post("/api/shorten",
+		srv.withLoggingMiddleware(
+			srv.minifyURLJSONHandler()))
+	srv.server.Handler = r
+
 	zl := zerolog.New(os.Stderr).With().Timestamp().Logger()
 	srv.Logger = zl
 
@@ -55,7 +61,7 @@ func (s *Server) ListenAndServe() error {
 
 func (s Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		err := validateContentType(req.Header, "text/plain")
+		err := validateContentType("text/plain", req.Header)
 		if err != nil {
 			respondBadRequest(res, err)
 			return
@@ -107,19 +113,68 @@ func (s Server) unMinifyURLHandler() http.HandlerFunc {
 	}
 }
 
+func (s Server) minifyURLJSONHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if err := validateContentType("application/json", req.Header); err != nil {
+			respondBadRequest(res, err)
+			return
+		}
+
+		// decode JSON request
+		var reqMinifyURL struct {
+			Url string `json:"url"`
+		}
+		d := json.NewDecoder(req.Body)
+		if err := d.Decode(&reqMinifyURL); err != nil {
+			respondBadRequest(res, err)
+			return
+		}
+		defer req.Body.Close()
+
+		// handle request
+		minifiedURL, err := s.service.MinifyURL(reqMinifyURL.Url)
+		if err != nil {
+			respondBadRequest(res, err)
+			return
+		}
+
+		// encode response
+		resMinifyURL := struct {
+			Result string `json:"result"`
+		}{
+			Result: minifiedURL,
+		}
+		jsonData, err := json.Marshal(&resMinifyURL)
+		if err != nil {
+			respondInternalServerError(res, err)
+			return
+		}
+		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
+		res.WriteHeader(http.StatusCreated)
+		res.Write([]byte(jsonData))
+	}
+}
+
 func respondBadRequest(res http.ResponseWriter, err error) {
 	res.WriteHeader(http.StatusBadRequest)
 	log.Printf("error: %s", err)
 }
 
-func validateContentType(h http.Header, value string) error {
-	mediaType, _, errParseMediaType := mime.ParseMediaType(h.Get("Content-Type"))
+func respondInternalServerError(res http.ResponseWriter, err error) {
+	res.WriteHeader(http.StatusInternalServerError)
+	log.Printf("error: %s", err)
+}
+
+// validateContentType checks if the `mediaType` exists in the `headers`
+func validateContentType(mediaType string, headers http.Header) error {
+	parseMediaType, _, errParseMediaType := mime.ParseMediaType(headers.Get("Content-Type"))
 	if errParseMediaType != nil {
 		return errParseMediaType
 	}
 
-	if mediaType != value {
-		return errors.New("error: Content-Type isn't " + value)
+	if parseMediaType != mediaType {
+		return errors.New("error: Content-Type isn't " + mediaType)
 	}
 
 	return nil
