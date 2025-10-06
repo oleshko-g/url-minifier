@@ -123,7 +123,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 
 		// decode JSON request
 		var reqMinifyURL struct {
-			Url string `json:"url"`
+			URL string `json:"url"`
 		}
 		d := json.NewDecoder(req.Body)
 		if err := d.Decode(&reqMinifyURL); err != nil {
@@ -134,7 +134,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		defer req.Body.Close()
 
 		// handle request
-		minifiedURL, err := s.service.MinifyURL(reqMinifyURL.Url)
+		minifiedURL, err := s.service.MinifyURL(reqMinifyURL.URL)
 		if err != nil {
 			respondInternalServerError(res, err)
 			s.Logger.Err(err).Msg("")
