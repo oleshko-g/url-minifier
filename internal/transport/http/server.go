@@ -117,6 +117,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if err := validateContentType("application/json", req.Header); err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
@@ -127,6 +128,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		d := json.NewDecoder(req.Body)
 		if err := d.Decode(&reqMinifyURL); err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		defer req.Body.Close()
@@ -134,7 +136,8 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		// handle request
 		minifiedURL, err := s.service.MinifyURL(reqMinifyURL.Url)
 		if err != nil {
-			respondBadRequest(res, err)
+			respondInternalServerError(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
@@ -147,6 +150,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		jsonData, err := json.Marshal(&resMinifyURL)
 		if err != nil {
 			respondInternalServerError(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		res.Header().Set("Content-Type", "application/json")
