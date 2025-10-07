@@ -62,7 +62,7 @@ jobs:
 
       - name: Build server binary
         run: |
-          go build -buildvcs=false -o minifier
+          go build -buildvcs=false
 
       - name: "Code increment #1"
         if: |
@@ -93,7 +93,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration1$ \
-              -binary-path=./minifier
+              -binary-path=./url-minifier
 
       - name: "Code increment #2"
         if: |
@@ -179,7 +179,7 @@ jobs:
         run: |
           SERVER_PORT=$(random unused-port)
           shortenertest -test.v -test.run=^TestIteration4$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -server-port=$SERVER_PORT
 
       - name: "Code increment #5"
@@ -208,7 +208,7 @@ jobs:
         run: |
           SERVER_PORT=$(random unused-port)
           shortenertest -test.v -test.run=^TestIteration5$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -server-port=$SERVER_PORT
 
       - name: "Code increment #6"
@@ -260,7 +260,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration7$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -source-path=.
 
       - name: "Code increment #8"
@@ -400,7 +400,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration13$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -420,7 +420,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration14$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -439,7 +439,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration15$ \
-              -binary-path=./minifier \
+              -binary-path=./url-minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
