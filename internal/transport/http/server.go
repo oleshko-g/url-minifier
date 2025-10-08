@@ -113,6 +113,13 @@ func (s Server) unMinifyURLHandler() http.HandlerFunc {
 	}
 }
 
+type minifyURLRequest struct {
+	URL string `json:"url"`
+}
+type minifyURLResponse struct {
+	Result string `json:"result"`
+}
+
 func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if err := validateContentType("application/json", req.Header); err != nil {
@@ -122,11 +129,9 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		}
 
 		// decode JSON request
-		var reqMinifyURL struct {
-			URL string `json:"url"`
-		}
+		var reqBody minifyURLRequest
 		d := json.NewDecoder(req.Body)
-		if err := d.Decode(&reqMinifyURL); err != nil {
+		if err := d.Decode(&reqBody); err != nil {
 			respondBadRequest(res, err)
 			s.Logger.Err(err).Msg("")
 			return
@@ -134,7 +139,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		defer req.Body.Close()
 
 		// handle request
-		minifiedURL, err := s.service.MinifyURL(reqMinifyURL.URL)
+		minifiedURL, err := s.service.MinifyURL(reqBody.URL)
 		if err != nil {
 			respondInternalServerError(res, err)
 			s.Logger.Err(err).Msg("")
@@ -142,12 +147,10 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		}
 
 		// encode response
-		resMinifyURL := struct {
-			Result string `json:"result"`
-		}{
+		resBody := minifyURLResponse{
 			Result: minifiedURL,
 		}
-		jsonData, err := json.Marshal(&resMinifyURL)
+		jsonData, err := json.Marshal(&resBody)
 		if err != nil {
 			respondInternalServerError(res, err)
 			s.Logger.Err(err).Msg("")
