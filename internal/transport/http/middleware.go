@@ -1,9 +1,40 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"time"
 )
+
+type Request struct {
+	*http.Request
+}
+
+func (r *Request) isCompressedBy() ([]string, error) {
+	if r.Request != nil {
+		return nil, errors.New("request is nil")
+	}
+
+	contentEncoding := (r.Header.Values("Content-Encoding"))
+	if contentEncoding == nil {
+		return nil, nil
+	}
+
+	if len(contentEncoding) == 1 && contentEncoding[0] == "" {
+		return nil, errors.New("\"Content-Endoing\" header is empty")
+	}
+
+	// TO DO: validate against all possible Content-Encoding values
+	// Content-Encoding: gzip
+	// Content-Encoding: compress
+	// Content-Encoding: deflate
+	// Content-Encoding: br
+	// Content-Encoding: zstd
+	// Content-Encoding: dcb
+	// Content-Encoding: dcz
+
+	return contentEncoding, nil
+}
 
 func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
