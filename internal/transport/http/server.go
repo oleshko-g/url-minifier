@@ -31,20 +31,30 @@ func NewServer(s service) *Server {
 	srv := &Server{
 		service: s,
 		server:  &http.Server{},
+		Config: Config{
+			canDecompress: map[coding]struct{}{
+				codingGZIP: {},
+			},
+			canCompress: map[coding]struct{}{
+				codingGZIP: {},
+			},
+		},
 	}
 
 	r := chi.NewRouter()
+	r.Use()
 	r.Post("/",
 		srv.withLoggingMiddleware(
-			srv.minifyURLHandler()))
+			srv.withEncodingMiddleware(
+				srv.minifyURLHandler())))
 	r.Get("/{id}",
 		srv.withLoggingMiddleware(
-			srv.unMinifyURLHandler()))
-	srv.server.Handler = r
-
+			srv.withEncodingMiddleware(
+				srv.unMinifyURLHandler())))
 	r.Post("/api/shorten",
 		srv.withLoggingMiddleware(
-			srv.minifyURLJSONHandler()))
+			srv.withEncodingMiddleware(
+				srv.minifyURLJSONHandler())))
 	srv.server.Handler = r
 
 	zl := zerolog.New(os.Stderr).With().Timestamp().Logger()
@@ -57,6 +67,12 @@ func (s *Server) ListenAndServe() error {
 	s.server.Addr = s.Address().String()
 	log.Printf("Minifier is listening on address: %s\n", s.server.Addr)
 	return s.server.ListenAndServe()
+}
+
+// canDecompress reports if the server can decompress the given compression format
+func (s *Server) canDecompress(compression coding) bool {
+	_, ok := s.Config.canDecompress[compression]
+	return ok
 }
 
 func (s Server) minifyURLHandler() http.HandlerFunc {

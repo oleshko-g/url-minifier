@@ -7,7 +7,9 @@ import (
 )
 
 type Config struct {
-	address address
+	address       address
+	canDecompress map[coding]struct{}
+	canCompress   map[coding]struct{}
 }
 
 func (c *Config) Address() *address {

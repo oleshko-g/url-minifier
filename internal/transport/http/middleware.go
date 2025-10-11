@@ -1,39 +1,42 @@
 package http
 
 import (
-	"errors"
+	"compress/gzip"
+	"fmt"
 	"net/http"
 	"time"
 )
 
-type Request struct {
-	*http.Request
-}
+func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		parsedCodings, err := parseContentCodings(req.Header.Values("Content-Encoding"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-func (r *Request) isCompressedBy() ([]string, error) {
-	if r.Request != nil {
-		return nil, errors.New("request is nil")
+		// iterate through Content-Encoding's parsedCodings and---if the server can---decompress each
+		for _, v := range parsedCodings {
+			if !s.canDecompress(v.coding) {
+				http.Error(w, fmt.Errorf("the server can't decompress the %v coding", v.coding).Error(), http.StatusUnsupportedMediaType)
+				return
+			}
+
+			switch v.coding {
+			case codingGZIP:
+				gzr, err := gzip.NewReader(req.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				defer gzr.Close()
+
+				req.Body = gzr // replace the request body with decompressor for reading the next decompressor or regular HTTP request handler
+			}
+		}
+
+		h(w, req)
 	}
-
-	contentEncoding := (r.Header.Values("Content-Encoding"))
-	if contentEncoding == nil {
-		return nil, nil
-	}
-
-	if len(contentEncoding) == 1 && contentEncoding[0] == "" {
-		return nil, errors.New("\"Content-Endoing\" header is empty")
-	}
-
-	// TO DO: validate against all possible Content-Encoding values
-	// Content-Encoding: gzip
-	// Content-Encoding: compress
-	// Content-Encoding: deflate
-	// Content-Encoding: br
-	// Content-Encoding: zstd
-	// Content-Encoding: dcb
-	// Content-Encoding: dcz
-
-	return contentEncoding, nil
 }
 
 func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
