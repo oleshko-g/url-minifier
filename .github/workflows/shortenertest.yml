@@ -285,7 +285,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration8$ \
-              -binary-path=.
+              -binary-path=./url-minifier
 
       - name: "Code increment #9"
         if: |
@@ -309,7 +309,7 @@ jobs:
         run: |
           TEMP_FILE=$(random tempfile)
           shortenertest -test.v -test.run=^TestIteration9$ \
-              -binary-path=. \
+              -binary-path=./url-minifier \
               -source-path=. \
               -file-storage-path=$TEMP_FILE
 
@@ -333,7 +333,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration10$ \
-              -binary-path=. \
+              -binary-path=./url-minifier \
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
@@ -357,7 +357,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration11$ \
-              -binary-path=. \
+              -binary-path=./url-minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
@@ -379,7 +379,7 @@ jobs:
           github.head_ref == 'iter24'
         run: |
           shortenertest -test.v -test.run=^TestIteration12$ \
-              -binary-path=. \
+              -binary-path=./url-minifier \
               -database-dsn=$DATABASE_CONN_STRING
           wipedb $DATABASE_CONN_STRING
 
