@@ -3,13 +3,14 @@ package http
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 )
 
-func parseContentCodings(ss []string) (validEncodings []parsedCoding, err error) {
-	for _, s := range ss {
-		pe, err := parseContentCoding(s)
+func parseContentEncoding(contentEncodingValues []string) (validEncodings []parsedCoding, err error) {
+	for _, v := range contentEncodingValues {
+		pe, err := parseContentCoding(v)
 		if err != nil {
 			return nil, err
 		}
@@ -17,6 +18,35 @@ func parseContentCodings(ss []string) (validEncodings []parsedCoding, err error)
 	}
 
 	return validEncodings, nil
+}
+
+// parseAcceptEncoding parses "Accept-Encoding" HTTP header
+//   - If "Accept-Encoding" is absent it returns a nil [parsedAcceptCodings] map and a nil error
+//   - Otherwise it parses "Accept-Encoding" existings values and returns a populated [parsedAcceptCodings] map or a parsing error
+//   - If [codingIdentity] is not specified explicitly it sets it in the [parsedAcceptCodings] map as if "identity;q=1.0" was parsed
+func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityValue, err error) {
+	acceptEncodingValues := h.Values("Accept-Encoding")
+	if acceptEncodingValues == nil {
+		return parsedAcceptCodings, nil // return the nil map with no error, "no Accept-Encoding"
+	}
+
+	parsedAcceptCodings = make(map[coding]qualityValue)
+
+	for _, v := range acceptEncodingValues {
+		pe, err := parseContentCoding(v)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedAcceptCodings[pe.coding] = pe.qualityValue
+	}
+
+	// if [codingIdentity] is not specified explicitly then set it with the default [qualityValue]
+	if _, ok := parsedAcceptCodings[codingIdentity]; !ok {
+		parsedAcceptCodings[codingIdentity] = 1.0
+	}
+
+	return parsedAcceptCodings, nil
 }
 
 func parseContentCoding(s string) (parsedCoding, error) {

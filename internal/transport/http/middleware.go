@@ -3,13 +3,14 @@ package http
 import (
 	"compress/gzip"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
 
 func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		parsedCodings, err := parseContentCodings(req.Header.Values("Content-Encoding"))
+		parsedCodings, err := parseContentEncoding(req.Header.Values("Content-Encoding"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -35,8 +36,30 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
+		var chosenCompression parsedCoding
+		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		for k := range s.Config.canCompress {
+			if q, ok := parsedAcceptCodings[k]; ok {
+				chosenCompression = parsedCoding.coding
+			}
+		}
+
 		h(w, req)
 	}
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+func (g *gzipResponseWriter) Write(b []byte) (int, error) {
+	return 0, nil
 }
 
 func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
