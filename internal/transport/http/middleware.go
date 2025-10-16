@@ -10,14 +10,14 @@ import (
 
 func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		parsedCodings, err := parseContentEncoding(req.Header.Values("Content-Encoding"))
+		parsedConentCodings, err := parseContentEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// iterate through Content-Encoding's parsedCodings and---if the server can---decompress each
-		for _, v := range parsedCodings {
+		for _, v := range parsedConentCodings {
 			if !s.canDecompress(v.coding) {
 				http.Error(w, fmt.Errorf("the server can't decompress the %v coding", v.coding).Error(), http.StatusUnsupportedMediaType)
 				return

@@ -8,21 +8,29 @@ import (
 	"strings"
 )
 
-func parseContentEncoding(contentEncodingValues []string) (validEncodings []parsedCoding, err error) {
+// parseContentEncoding parses "Content-Encoding" HTTP header.
+//   - If "Content-Encoding" is absent it return a nil [parsedContentEncodings] slice and a nil error
+//   - Otherwise it parses "Content-Encoding" existing values and returns a populated [parsedContentCodings]---ordered the same as "Content-Encoding" values---slice  or a parsing error
+func parseContentEncoding(h http.Header) (parsedContentCodings []parsedCoding, err error) {
+	contentEncodingValues := h.Values("Content-Encoding")
+	if contentEncodingValues == nil {
+		return parsedContentCodings, nil // no "Content-Encodings, return empty
+	}
+
 	for _, v := range contentEncodingValues {
 		pe, err := parseCoding(v)
 		if err != nil {
 			return nil, err
 		}
-		validEncodings = append(validEncodings, pe)
+		parsedContentCodings = append(parsedContentCodings, pe)
 	}
 
-	return validEncodings, nil
+	return parsedContentCodings, nil
 }
 
 // parseAcceptEncoding parses "Accept-Encoding" HTTP header
 //   - If "Accept-Encoding" is absent it returns a nil [parsedAcceptCodings] map and a nil error
-//   - Otherwise it parses "Accept-Encoding" existings values and returns a populated [parsedAcceptCodings] map or a parsing error
+//   - Otherwise it parses "Accept-Encoding" existing values and returns a populated [parsedAcceptCodings] map or a parsing error
 //   - If [codingIdentity] is not specified explicitly it sets it in the [parsedAcceptCodings] map as if "identity;q=1.0" was parsed
 func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityValue, err error) {
 	acceptEncodingValues := h.Values("Accept-Encoding")
