@@ -10,7 +10,7 @@ import (
 
 func parseContentEncoding(contentEncodingValues []string) (validEncodings []parsedCoding, err error) {
 	for _, v := range contentEncodingValues {
-		pe, err := parseContentCoding(v)
+		pe, err := parseCoding(v)
 		if err != nil {
 			return nil, err
 		}
@@ -33,8 +33,12 @@ func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityV
 	parsedAcceptCodings = make(map[coding]qualityValue)
 
 	for _, v := range acceptEncodingValues {
-		pe, err := parseContentCoding(v)
+		pe, err := parseCoding(v)
 		if err != nil {
+			// "Accept-Encoding" with an only empty string value means implicit "identity;q=1.0". Break the loop with no error
+			if errors.Is(err, errEmptyCoding) && len(acceptEncodingValues) == 1 {
+				break
+			}
 			return nil, err
 		}
 
@@ -49,9 +53,9 @@ func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityV
 	return parsedAcceptCodings, nil
 }
 
-func parseContentCoding(s string) (parsedCoding, error) {
+func parseCoding(s string) (parsedCoding, error) {
 	if s == "" {
-		return parsedCoding{}, errors.New("empty coding value")
+		return parsedCoding{}, errEmptyCoding
 	}
 
 	var pe parsedCoding
@@ -59,7 +63,7 @@ func parseContentCoding(s string) (parsedCoding, error) {
 	before, after, found := strings.Cut(s, ";q=")
 	if before == "" {
 		return parsedCoding{},
-			errors.New("empty coding value")
+			errEmptyCoding
 	}
 
 	if !coding(s).valid() {
@@ -87,7 +91,7 @@ func parseContentCoding(s string) (parsedCoding, error) {
 		return parsedCoding{},
 			errors.Join(errors.New("failed to parse quality value '%s' of %s coding"), err)
 	}
-	if parsedFloat < 0.0 && parsedFloat < 1.0 {
+	if parsedFloat < 0.0 || parsedFloat < 1.0 {
 		defer func() { _, _ = pe, parsedFloat }()
 		return parsedCoding{},
 			fmt.Errorf("quality value %s of %s coding doesn't satisfy '0.0 <= quality value <= 1.0'", after, pe.coding)
@@ -98,6 +102,8 @@ func parseContentCoding(s string) (parsedCoding, error) {
 	pe.qualityValue = qualityValue(parsedFloat)
 	return pe, nil
 }
+
+var errEmptyCoding = errors.New("empty coding value")
 
 // parsedCoding represents a valid HTTP coding value used in Content-Encoding or Accept-Encoding HTTP header fields
 type parsedCoding struct {
