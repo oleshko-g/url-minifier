@@ -36,18 +36,12 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		var chosenCompression parsedCoding
 		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		for k := range s.Config.canCompress {
-			if q, ok := parsedAcceptCodings[k]; ok {
-				chosenCompression = parsedCoding.coding
-			}
-		}
+		_, err = s.chooseCompression(parsedAcceptCodings)
 
 		h(w, req)
 	}

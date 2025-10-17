@@ -75,6 +75,17 @@ func (s *Server) canDecompress(compression coding) bool {
 	return ok
 }
 
+func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) (chosenCompression parsedCoding, error error) {
+	for c := range s.Config.canCompress {
+		q, ok := parsedAcceptCodings[c]
+		if ok && q > chosenCompression.qualityValue {
+			chosenCompression.coding = c
+			chosenCompression.qualityValue = q
+		}
+	}
+	return chosenCompression, nil
+}
+
 func (s Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := validateContentType("text/plain", req.Header)
