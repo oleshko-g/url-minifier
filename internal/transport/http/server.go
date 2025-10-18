@@ -35,8 +35,9 @@ func NewServer(s service) *Server {
 			canDecompress: map[coding]struct{}{
 				codingGZIP: {},
 			},
-			canCompress: map[coding]struct{}{
-				codingGZIP: {},
+			canCompress: []coding{
+				codingGZIP,
+				codingIdentity,
 			},
 		},
 	}
@@ -75,15 +76,49 @@ func (s *Server) canDecompress(compression coding) bool {
 	return ok
 }
 
-func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) (chosenCompression parsedCoding, error error) {
-	for c := range s.Config.canCompress {
-		q, ok := parsedAcceptCodings[c]
-		if ok && q > chosenCompression.qualityValue {
-			chosenCompression.coding = c
-			chosenCompression.qualityValue = q
+func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) (coding, error) {
+	compression := parsedCoding{
+		coding:       s.Config.canCompress[0],
+		qualityValue: 1.0,
+	}
+
+	for _, c := range s.canCompress {
+		// check if the client explicitly specified a coding which the server [canCompress]
+		if q, ok := parsedAcceptCodings[c]; ok {
+
+			if compression.coding == c {
+				compression.qualityValue = q // the specified [qualityValue] overrides the default one
+				continue
+			}
+
+			if compression.qualityValue < q {
+				compression.coding = c
+				compression.qualityValue = q
+				continue
+			}
+
+		}
+
+		// check if the client implicitly specified a coding which the server [canCompresss]
+		if q, ok := parsedAcceptCodings[codingWildcard]; ok {
+			if compression.qualityValue != q {
+				compression.qualityValue = q
+				continue
+			}
+
+			if compression.qualityValue < q {
+				compression.coding = c
+				compression.qualityValue = q
+				continue
+			}
 		}
 	}
-	return chosenCompression, nil
+
+	if compression.qualityValue == 0 {
+		return "", errors.New("the client has forbidden every coding which the server can compress the response with")
+	}
+
+	return compression.coding, nil
 }
 
 func (s Server) minifyURLHandler() http.HandlerFunc {

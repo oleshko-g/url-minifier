@@ -9,7 +9,7 @@ import (
 type Config struct {
 	address       address
 	canDecompress map[coding]struct{}
-	canCompress   map[coding]struct{}
+	canCompress   []coding // MUST contain at least one element. [codingIdentity] MUST be the last element
 }
 
 func (c *Config) Address() *address {

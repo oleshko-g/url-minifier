@@ -41,7 +41,15 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		_, err = s.chooseCompression(parsedAcceptCodings)
+
+		compression, err := s.chooseCompression(parsedAcceptCodings)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotAcceptable)
+			return
+		}
+
+		if compression == codingGZIP {
+		}
 
 		h(w, req)
 	}
