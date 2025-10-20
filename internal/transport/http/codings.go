@@ -121,7 +121,7 @@ type parsedCoding struct {
 
 type (
 	qualityValue float32 // Quality values, or q-values and q-factors, are used to describe the order of priority of values in a comma-separated list. It is a special syntax allowed in some HTTP headers and in HTML.
-	coding       string  // coding is the alias a string which is possibly an HTTP Content coding listed in [validCodings]
+	coding       string  // coding is a string which might be a valid HTTP Content coding listed in [validCodings]
 )
 
 func (c coding) valid() bool {

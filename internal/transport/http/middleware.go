@@ -47,21 +47,36 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusNotAcceptable)
 			return
 		}
-
-		if compression == codingGZIP {
+		cw := compressingResponseWriter{
+			ResponseWriter: w,
+			coding:         compression,
 		}
 
-		h(w, req)
+		h(cw, req)
 	}
 }
 
-type gzipResponseWriter struct {
+type compressingResponseWriter struct {
 	http.ResponseWriter
-	Writer io.Writer
+	writer io.Writer
+	coding
 }
 
-func (g *gzipResponseWriter) Write(b []byte) (int, error) {
-	return 0, nil
+func (cw compressingResponseWriter) Write(b []byte) (int, error) {
+	switch cw.ResponseWriter.Header().Get("Content-Type") {
+	case "application/json", "text/html":
+
+		switch cw.coding {
+		case codingGZIP:
+			cw.writer = gzip.NewWriter(cw.ResponseWriter)
+		case codingIdentity:
+			return cw.ResponseWriter.Write(b) // write without compression
+		}
+
+		return cw.writer.Write(b)
+	}
+
+	return cw.ResponseWriter.Write(b)
 }
 
 func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {

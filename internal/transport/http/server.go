@@ -54,8 +54,7 @@ func NewServer(s service) *Server {
 				srv.unMinifyURLHandler())))
 	r.Post("/api/shorten",
 		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				srv.minifyURLJSONHandler())))
+			srv.minifyURLJSONHandler()))
 	srv.server.Handler = r
 
 	zl := zerolog.New(os.Stderr).With().Timestamp().Logger()
