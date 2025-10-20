@@ -36,6 +36,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
+		// parse the Accept-Encdoing(s) the client could specify in the request and---if the server can---compress the response
 		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -58,7 +59,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 type compressingResponseWriter struct {
 	http.ResponseWriter
-	writer io.Writer
+	io.WriteCloser
 	coding
 }
 
@@ -68,12 +69,16 @@ func (cw compressingResponseWriter) Write(b []byte) (int, error) {
 
 		switch cw.coding {
 		case codingGZIP:
-			cw.writer = gzip.NewWriter(cw.ResponseWriter)
+			cw.WriteCloser = gzip.NewWriter(cw.ResponseWriter)
 		case codingIdentity:
 			return cw.ResponseWriter.Write(b) // write without compression
 		}
+		if cw.WriteCloser != nil {
+			defer cw.WriteCloser.Close()
+		}
 
-		return cw.writer.Write(b)
+		cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
+		return cw.ResponseWriter.Write(b)
 	}
 
 	return cw.ResponseWriter.Write(b)

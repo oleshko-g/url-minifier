@@ -43,19 +43,15 @@ func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityV
 	for _, v := range acceptEncodingValues {
 		pe, err := parseCoding(v)
 		if err != nil {
-			// "Accept-Encoding" with an only empty string value means implicit "identity;q=1.0". Break the loop with no error
+			// "Accept-Encoding" with an only empty string value means implicit "identity;q=1.0". Set it and break the loop with no error
 			if errors.Is(err, errEmptyCoding) && len(acceptEncodingValues) == 1 {
+				parsedAcceptCodings[codingIdentity] = 1.0
 				break
 			}
 			return nil, err
 		}
 
 		parsedAcceptCodings[pe.coding] = pe.qualityValue
-	}
-
-	// if [codingIdentity] is not specified explicitly then set it with the default [qualityValue]
-	if _, ok := parsedAcceptCodings[codingIdentity]; !ok {
-		parsedAcceptCodings[codingIdentity] = 1.0
 	}
 
 	return parsedAcceptCodings, nil
