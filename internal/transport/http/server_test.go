@@ -11,6 +11,7 @@ import (
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -183,6 +184,36 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 			}
 
 			require.Equal(t, tt.want.body, body)
+		})
+	}
+}
+
+func TestServer_chooseCompression(t *testing.T) {
+	type chooseCompressionResult struct {
+		coding
+		error
+	}
+	tests := []struct {
+		name                string // description of this test case
+		s                   service
+		parsedAcceptCodings map[coding]qualityValue
+		want                chooseCompressionResult
+	}{
+		{
+			name: "the client specified GZIP",
+			s:    nil,
+			parsedAcceptCodings: map[coding]qualityValue{
+				codingGZIP: 1.0,
+			},
+			want: chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewServer(tt.s)
+			got, gotErr := s.chooseCompression(tt.parsedAcceptCodings)
+			assert.NoError(t, gotErr)
+			assert.Equal(t, tt.want.coding, got)
 		})
 	}
 }
