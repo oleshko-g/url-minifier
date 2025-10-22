@@ -7,12 +7,12 @@ import (
 )
 
 func New() (*File, error) {
-	err := os.Mkdir(path, 0o7555)
+	err := os.Mkdir(path, dirPerm)
 	if err != nil {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(path+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(path+fileName, os.O_RDWR|os.O_CREATE, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -31,6 +31,10 @@ type File struct {
 	decoder *json.Decoder
 }
 
+func (f *File) Close() error {
+	return f.p.Close()
+}
+
 type fileRecord struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -39,6 +43,7 @@ type fileRecord struct {
 func (f *File) Save(key, value string) error {
 	f.mux.Lock()
 	defer f.mux.Unlock()
+	f.p.Seek(0, 2) // set offset to the end of the file
 
 	err := f.encoder.Encode(fileRecord{Key: key, Value: value})
 	if err != nil {
@@ -49,8 +54,21 @@ func (f *File) Save(key, value string) error {
 }
 
 func (f *File) Retrieve(key string) (value string, err error) {
-	// TODO: wrap the file with bufio.Scanner, Seek at the start of the file, Scan iterate untill key match
-	return "", nil
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	f.p.Seek(0, 0) // set offset to the start of the file
+
+	var fr fileRecord
+	for {
+		err = f.decoder.Decode(&fr)
+		if err != nil {
+			return "", err
+		}
+
+		if fr.Key == key {
+			return fr.Value, nil
+		}
+	}
 }
 
 // defaults
