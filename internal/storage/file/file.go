@@ -2,66 +2,73 @@ package file
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"sync"
+
+	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-func New() (*File, error) {
-	err := os.Mkdir(path, dirPerm)
+func New(path string) (*File, error) {
+	if path == "" {
+		path = defaultPath
+	}
+
+	err := os.MkdirAll(path, dirPerm)
 	if err != nil {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(path+fileName, os.O_RDWR|os.O_CREATE, filePerm)
+	fp, err := os.OpenFile(defaultPath+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
 
 	return &File{
-		p:       fp,
-		encoder: json.NewEncoder(fp),
-		decoder: json.NewDecoder(fp),
+		p: fp,
 	}, nil
 }
 
 type File struct {
-	mux     sync.RWMutex
-	p       *os.File
-	encoder *json.Encoder
-	decoder *json.Decoder
+	mux sync.RWMutex
+	p   *os.File
 }
 
 func (f *File) Close() error {
 	return f.p.Close()
 }
 
-type fileRecord struct {
+type record struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
-func (f *File) Save(key, value string) error {
+func (f *File) Save(key, value string) (err error) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
-	f.p.Seek(0, 2) // set offset to the end of the file
+	defer f.p.Sync()
 
-	err := f.encoder.Encode(fileRecord{Key: key, Value: value})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
 }
 
 func (f *File) Retrieve(key string) (value string, err error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	f.p.Seek(0, 0) // set offset to the start of the file
 
-	var fr fileRecord
+	rr, err := newRecordReader(f.p.Name())
+	if err != nil {
+		return "", err
+	}
+	defer rr.Close()
+
+	var fr record
 	for {
-		err = f.decoder.Decode(&fr)
+		err = rr.decoder.Decode(&fr)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return "", storageErrors.ErrNotFound
+			}
 			return "", err
 		}
 
@@ -71,10 +78,39 @@ func (f *File) Retrieve(key string) (value string, err error) {
 	}
 }
 
+type recordReader struct {
+	file    *os.File
+	decoder *json.Decoder
+}
+
+func newRecordReader(filename string) (*recordReader, error) {
+	fp, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, filePerm)
+	if err != nil {
+		return nil, err
+	}
+
+	dep := json.NewDecoder(fp)
+
+	return &recordReader{
+		file:    fp,
+		decoder: dep,
+	}, nil
+}
+
+func (c *recordReader) Close() error {
+	return c.file.Close()
+}
+
 // defaults
 const (
-	path                 = "./.files/"
-	fileName             = "minifiedURLs.json"
-	dirPerm  os.FileMode = 0o755 // UNIX persmiffions: Write Read Execute, Read _ Execute, Read _ Execute
-	filePerm os.FileMode = 0o644 // UNIX persmiffions: Write Read _, Read _ _, Read _ _
+	defaultPath = "./.files/"
+	fileName    = "minifiedURLs.json"
+)
+
+// UNIX persmissions
+const (
+	// Write Read Execute, Read _ Execute, Read _ Execute
+	dirPerm os.FileMode = 0o755
+	// Write Read _, Read _ _, Read _ _
+	filePerm os.FileMode = 0o644
 )
