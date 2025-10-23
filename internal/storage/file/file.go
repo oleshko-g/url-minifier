@@ -10,9 +10,10 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
+// New returns a pointer to a [File] or an error. If [path] is empty it sets it to [DefaultPath]
 func New(path string) (*File, error) {
 	if path == "" {
-		path = defaultPath
+		path = DefaultPath
 	}
 
 	err := os.MkdirAll(path, dirPerm)
@@ -20,7 +21,7 @@ func New(path string) (*File, error) {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(defaultPath+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(DefaultPath+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +34,7 @@ func New(path string) (*File, error) {
 type File struct {
 	mux sync.RWMutex
 	p   *os.File
+	Config
 }
 
 func (f *File) Close() error {
@@ -56,11 +58,11 @@ func (f *File) Retrieve(key string) (value string, err error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	rr, err := newRecordReader(f.p.Name())
+	rr, err := f.newRecordReader()
 	if err != nil {
 		return "", err
 	}
-	defer rr.Close()
+	defer rr.file.Close()
 
 	var fr record
 	for {
@@ -83,8 +85,8 @@ type recordReader struct {
 	decoder *json.Decoder
 }
 
-func newRecordReader(filename string) (*recordReader, error) {
-	fp, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, filePerm)
+func (f *File) newRecordReader() (*recordReader, error) {
+	fp, err := os.OpenFile(f.Config.Path().String()+fileName, os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -97,13 +99,9 @@ func newRecordReader(filename string) (*recordReader, error) {
 	}, nil
 }
 
-func (c *recordReader) Close() error {
-	return c.file.Close()
-}
-
 // defaults
 const (
-	defaultPath = "./.files/"
+	DefaultPath = "./.files/"
 	fileName    = "minifiedURLs.json"
 )
 

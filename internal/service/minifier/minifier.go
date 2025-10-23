@@ -16,7 +16,7 @@ type Storager interface {
 	Retrieve(key string) (value string, err error)
 }
 
-func New(s Storager) *Service {
+func New(s Storager, c *Config) *Service {
 	return &Service{
 		storage: s,
 	}

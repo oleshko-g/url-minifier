@@ -27,20 +27,15 @@ type service interface {
 	UnMinifyURL(id string) (url string, err error)
 }
 
-func NewServer(s service) *Server {
+func NewServer(s service, c *Config) *Server {
 	srv := &Server{
 		service: s,
 		server:  &http.Server{},
-		Config: Config{
-			canDecompress: map[coding]struct{}{
-				codingGZIP: {},
-			},
-			canCompress: []coding{
-				codingGZIP,
-				codingIdentity,
-			},
-		},
+		Config:  *c,
 	}
+
+	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
+	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
 	r := chi.NewRouter()
 	r.Use()
