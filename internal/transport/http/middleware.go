@@ -13,13 +13,16 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		parsedConentCodings, err := parseContentEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		// iterate through Content-Encoding's parsedCodings and---if the server can---decompress each
 		for _, v := range parsedConentCodings {
 			if !s.canDecompress(v.coding) {
-				http.Error(w, fmt.Errorf("the server can't decompress the %v coding", v.coding).Error(), http.StatusUnsupportedMediaType)
+				err := fmt.Errorf("the server can't decompress the %v coding", v.coding)
+				http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+				s.Logger.Err(err).Msg("")
 				return
 			}
 
@@ -28,6 +31,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 				gzr, err := gzip.NewReader(req.Body)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
+					s.Logger.Err(err).Msg("")
 					return
 				}
 				defer gzr.Close()
@@ -40,12 +44,14 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		compression, err := s.chooseCompression(parsedAcceptCodings)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotAcceptable)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		cw := compressingResponseWriter{

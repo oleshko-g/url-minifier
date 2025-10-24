@@ -121,18 +121,21 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 		err := validateContentType("text/plain", req.Header)
 		if err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		url, err := url.Parse(string(data))
 		if err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 
@@ -141,6 +144,7 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 		minifiedURL, err := s.service.MinifyURL(url.String())
 		if err != nil {
 			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		log.Printf("minifiedURL: %s", minifiedURL)
@@ -154,14 +158,18 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 
 func (s Server) unMinifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		var err error
 		id := req.PathValue("id")
 		if id == "" {
-			respondBadRequest(res, errors.New("empty id"))
+			err = errors.New("empty id")
+			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		url, err := s.service.UnMinifyURL(id)
 		if err != nil {
-			respondBadRequest(res, errors.New("URL is not found"))
+			respondBadRequest(res, err)
+			s.Logger.Err(err).Msg("")
 			return
 		}
 		res.Header().Add("Location", url)
@@ -222,12 +230,10 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 
 func respondBadRequest(res http.ResponseWriter, err error) {
 	res.WriteHeader(http.StatusBadRequest)
-	log.Printf("error: %s", err)
 }
 
 func respondInternalServerError(res http.ResponseWriter, err error) {
 	res.WriteHeader(http.StatusInternalServerError)
-	log.Printf("error: %s", err)
 }
 
 // validateContentType checks if the `mediaType` exists in the `headers`
