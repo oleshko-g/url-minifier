@@ -22,7 +22,7 @@ func New(c *Config) (*File, error) {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(c.Path().String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(c.Path().String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (f *File) newRecordReader() (*recordReader, error) {
 
 // defaults
 const (
-	DefaultPath = "./.files/"
+	DefaultPath = "./files/"
 	fileName    = "minifiedURLs.json"
 )
 
