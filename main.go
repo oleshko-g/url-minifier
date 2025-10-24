@@ -69,7 +69,7 @@ func (a *app) setup() (err error) {
 	if a.fileConfig.Path().String() == "" {
 		a.Storager = memory.NewStrRecords()
 	}
-	a.Storager, err = file.New(a.fileConfig.Path().String())
+	a.Storager, err = file.New(&a.fileConfig)
 	if err != nil {
 		log.Fatal(err)
 	}

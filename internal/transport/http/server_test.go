@@ -21,13 +21,27 @@ type testMinifierResponse struct {
 	body       []byte
 }
 
-func TestServer_minifyURLHandler(t *testing.T) {
-	storage := memory.NewStrRecords()
-	service := minifier.New(storage)
-	service.Config.MaxLen = 8
-	service.Config.BaseURL().Set("http://localhost:8080/")
-	server := NewServer(service)
+type testApp struct {
+	minifierConfig minifier.Config
+	Config
+	minifier.Storager
+	*minifier.Service
+	*Server
+}
 
+func newTestApp() *testApp {
+	var ta testApp
+
+	ta.Storager = memory.NewStrRecords()
+	ta.minifierConfig.MaxLen = 8
+	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
+	ta.Service = minifier.New(ta.Storager, &ta.minifierConfig)
+	ta.Server = NewServer(ta.Service, &ta.Config)
+	return &ta
+}
+
+func TestServer_minifyURLHandler(t *testing.T) {
+	ta := newTestApp()
 	tests := []struct {
 		name        string // description of this test case
 		originalURL string
@@ -42,7 +56,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 				statusCode: 201,
 				headers: map[string]string{
 					"Content-Type":   "text/plain",
-					"Content-Length": strconv.Itoa(len(service.BaseURL().String()) + 12),
+					"Content-Length": strconv.Itoa(len(ta.Service.BaseURL().String()) + 12),
 				},
 			},
 		},
@@ -50,13 +64,13 @@ func TestServer_minifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.want.body = []byte(service.Config.BaseURL().String() + "/" + tt.minifiedID)
+			tt.want.body = []byte(ta.Service.Config.BaseURL().String() + "/" + tt.minifiedID)
 
 			req := httptest.NewRequest("POST", "/", bytes.NewBuffer([]byte("https://practicum.yandex.ru/")))
 			req.Header.Set("Content-Type", "text/plain")
 
 			w := httptest.NewRecorder()
-			server.minifyURLHandler().ServeHTTP(w, req)
+			ta.Server.minifyURLHandler().ServeHTTP(w, req)
 			res := w.Result()
 
 			body, err := io.ReadAll(res.Body)
@@ -75,11 +89,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 }
 
 func TestServer_unMinifyURLHandler(t *testing.T) {
-	storage := memory.NewStrRecords()
-	service := minifier.New(storage)
-	service.Config.MaxLen = 8
-	service.Config.BaseURL().Set("http://localhost:8080/")
-	server := NewServer(service)
+	ta := newTestApp()
 
 	tests := []struct {
 		name string // description of this test case
@@ -105,13 +115,13 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage.Save(tt.minifiedID, tt.originalURL)
+			ta.Storager.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)
 
 			w := httptest.NewRecorder()
-			server.unMinifyURLHandler().ServeHTTP(w, req)
+			ta.Server.unMinifyURLHandler().ServeHTTP(w, req)
 			res := w.Result()
 			defer res.Body.Close()
 
@@ -126,11 +136,7 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 func TestServer_minifyJSONURLHandler(t *testing.T) {
 	// setup server config to use it programmatically
-	storage := memory.NewStrRecords()
-	service := minifier.New(storage)
-	service.Config.MaxLen = 8
-	service.Config.BaseURL().Set("http://localhost:8080/")
-	server := NewServer(service)
+	ta := newTestApp()
 
 	tests := []struct {
 		name        string // description of this test case
@@ -156,7 +162,7 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// set wanted response body
-			resData, err := json.Marshal(minifyURLResponse{Result: service.BaseURL().String() + "/" + tt.minifiedID})
+			resData, err := json.Marshal(minifyURLResponse{Result: ta.Service.BaseURL().String() + "/" + tt.minifiedID})
 			require.NoError(t, err)
 			tt.want.body = resData
 
@@ -170,7 +176,7 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 
 			// make the request
 			w := httptest.NewRecorder()
-			server.minifyURLJSONHandler().ServeHTTP(w, req)
+			ta.Server.minifyURLJSONHandler().ServeHTTP(w, req)
 			res := w.Result()
 			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
@@ -210,7 +216,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewServer(tt.s)
+			s := NewServer(tt.s, &Config{})
 			got, gotErr := s.chooseCompression(tt.parsedAcceptCodings)
 			assert.NoError(t, gotErr)
 			assert.Equal(t, tt.want.coding, got)

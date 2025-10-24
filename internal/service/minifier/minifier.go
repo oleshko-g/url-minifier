@@ -8,7 +8,7 @@ import (
 
 type Service struct {
 	storage Storager
-	Config
+	*Config
 }
 
 type Storager interface {
@@ -16,9 +16,10 @@ type Storager interface {
 	Retrieve(key string) (value string, err error)
 }
 
-func New(s Storager, c *Config) *Service {
+func New(s Storager, cp *Config) *Service {
 	return &Service{
 		storage: s,
+		Config:  cp,
 	}
 }
 

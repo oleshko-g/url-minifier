@@ -18,7 +18,7 @@ import (
 type Server struct {
 	server *http.Server
 	service
-	Config
+	*Config
 	zerolog.Logger
 }
 
@@ -27,11 +27,11 @@ type service interface {
 	UnMinifyURL(id string) (url string, err error)
 }
 
-func NewServer(s service, c *Config) *Server {
+func NewServer(s service, cp *Config) *Server {
 	srv := &Server{
 		service: s,
 		server:  &http.Server{},
-		Config:  *c,
+		Config:  cp,
 	}
 
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}

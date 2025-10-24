@@ -11,30 +11,30 @@ import (
 )
 
 // New returns a pointer to a [File] or an error. If [path] is empty it sets it to [DefaultPath]
-func New(path string) (*File, error) {
-	if path == "" {
-		path = DefaultPath
+func New(c *Config) (*File, error) {
+	file := File{
+		mux:    sync.RWMutex{},
+		Config: c,
 	}
 
-	err := os.MkdirAll(path, dirPerm)
+	err := os.MkdirAll(c.Path().String(), dirPerm)
 	if err != nil {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(DefaultPath+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(c.Path().String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
+	file.p = fp
 
-	return &File{
-		p: fp,
-	}, nil
+	return &file, nil
 }
 
 type File struct {
 	mux sync.RWMutex
 	p   *os.File
-	Config
+	*Config
 }
 
 func (f *File) Close() error {
