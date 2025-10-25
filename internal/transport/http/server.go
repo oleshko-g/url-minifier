@@ -145,7 +145,7 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 
 		minifiedURL, err := s.service.MinifyURL(url.String())
 		if err != nil {
-			responseWithError(res, err, http.StatusBadRequest)
+			responseWithError(res, err, http.StatusInternalServerError)
 			s.Logger.Err(err).Msg("")
 			return
 		}

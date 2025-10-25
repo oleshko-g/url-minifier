@@ -1,3 +1,4 @@
+// Package file is an implementation of [minifier.Storager]
 package file
 
 import (
@@ -55,10 +56,25 @@ type record struct {
 	Value string `json:"value"`
 }
 
+// Save saves the value under the key or return an error if key already exists
 func (f *File) Save(key, value string) (err error) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	defer f.p.Sync()
+	err = save(f, key, value)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			return fmt.Errorf("value %s already exists", value)
+		}
+		return err
+	}
+	return
+}
+
+func save(f *File, key, value string) (err error) {
+	if _, err = retrieve(f, key); !errors.Is(err, storageErrors.ErrNotFound) {
+		return storageErrors.ErrAlreadyExists
+	}
 
 	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
 }
@@ -67,13 +83,15 @@ func (f *File) Save(key, value string) (err error) {
 func (f *File) Retrieve(key string) (value string, err error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
+	return retrieve(f, key)
+}
 
+func retrieve(f *File, key string) (value string, err error) {
 	rr, err := f.newRecordReader()
 	if err != nil {
 		return "", err
 	}
 	defer rr.file.Close()
-
 	var fr record
 	for {
 		err = rr.decoder.Decode(&fr)
