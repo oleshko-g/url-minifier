@@ -3,40 +3,49 @@ package file
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"os"
 	"sync"
 
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-// New returns a pointer to a [File] or an error. If [path] is empty it sets it to [DefaultPath]
-func New(c *Config) (*File, error) {
-	file := File{
+// New returns a pointer to a [File] or—if a file [Config.Path().String()] is invalid—an error.
+func New(c *Config) (file *File, err error) {
+	if err = c.filePath.Set(c.filePath.String()); err != nil {
+		log.Print(fmt.Errorf("c.filePath.Set(c.filePath.String() + fileName): %w", err))
+		return nil, err
+	}
+
+	err = os.MkdirAll(c.filePath.String(), dirPerm)
+	if err != nil {
+		log.Print(fmt.Errorf("err = os.MkdirAll(c.filePath.String(), dirPerm): %w", err))
+		return nil, err
+	}
+
+	fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	if err != nil {
+		log.Print(fmt.Errorf("fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %w", err))
+		return nil, err
+	}
+
+	return &File{
+		p:      fp,
 		mux:    sync.RWMutex{},
 		Config: c,
-	}
-
-	err := os.MkdirAll(c.Path().String(), dirPerm)
-	if err != nil {
-		return nil, err
-	}
-
-	fp, err := os.OpenFile(c.Path().String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
-	if err != nil {
-		return nil, err
-	}
-	file.p = fp
-
-	return &file, nil
+	}, nil
 }
 
+// File is a filesystem implementation of [minifier.Storager]
 type File struct {
 	mux sync.RWMutex
 	p   *os.File
 	*Config
 }
 
+// Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {
 	return f.p.Close()
 }
@@ -54,6 +63,7 @@ func (f *File) Save(key, value string) (err error) {
 	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
 }
 
+// Retrieve returns a value stored in the [File] by a key or an [ErrNotFound]
 func (f *File) Retrieve(key string) (value string, err error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -101,8 +111,8 @@ func (f *File) newRecordReader() (*recordReader, error) {
 
 // defaults
 const (
-	DefaultPath = "./files/"
-	fileName    = "minifiedURLs.json"
+	DefaultPath path   = "./files/"
+	fileName    string = "minifiedURLs.json"
 )
 
 // UNIX persmissions

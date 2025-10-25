@@ -2,14 +2,15 @@ package file
 
 // Config represents a [file.File] config
 type Config struct {
-	p path
+	filePath path
 }
 
-// Path returns a pinter to an unexported [file.path] value
+// Path returns a pointer to an unexported [file.path] value
 func (c *Config) Path() *path {
-	return &c.p
+	return &c.filePath
 }
 
+// path respresents a valid file in a file system
 type path string
 
 // Set sets the [file.Config.Path()]

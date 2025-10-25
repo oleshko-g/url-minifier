@@ -33,29 +33,38 @@ type app struct {
 
 func (a *app) setup() (err error) {
 	// Set the default config values
-	a.fileConfig.Path().Set(file.DefaultPath)
+	err = a.fileConfig.Path().Set(string(file.DefaultPath))
+	if err != nil {
+		return err
+	}
+	err = a.minifierConfig.BaseURL().Set("http://localhost:8080")
+	if err != nil {
+		return err
+	}
+	err = a.httpConfig.Address().Set("localhost:8080")
+	if err != nil {
+		return err
+	}
 	a.minifierConfig.MaxLen = 8
-	a.minifierConfig.BaseURL().Set("http://localhost:8080")
-	a.httpConfig.Address().Set("localhost:8080")
 
 	// If an env var is present then it overrides the default value or the flag value
 	godotenv.Load(".env")
 	if filePath := os.Getenv("FILE_STORAGE_PATH"); filePath != "" {
 		// sets err func (a *app) setup()
 		if err = a.fileConfig.Path().Set(filePath); err != nil {
-			return
+			return err
 		}
 	}
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
 		// sets err func (a *app) setup()
 		if err = a.minifierConfig.BaseURL().Set(baseURL); err != nil {
-			return
+			return err
 		}
 		a.minifierConfig.BaseURL().Source = "ENV"
 	}
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
 		if err = a.httpConfig.Address().Set(serverAddress); err != nil {
-			return
+			return err
 		}
 		a.httpConfig.Address().Source = "ENV"
 	}
@@ -71,7 +80,7 @@ func (a *app) setup() (err error) {
 	}
 	a.Storager, err = file.New(&a.fileConfig)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	log.Print("storage set")
 
