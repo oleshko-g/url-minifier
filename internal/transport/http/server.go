@@ -98,17 +98,14 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 
 		// check if the client implicitly specified a coding which the server [canCompresss]
 		if q, ok := parsedAcceptCodings[codingWildcard]; ok {
-			if compression.qualityValue != q {
-				compression.qualityValue = q
-				continue
-			}
-
-			if compression.qualityValue < q {
-				compression.coding = c
-				compression.qualityValue = q
-				continue
-			}
+			compression.coding = c
+			compression.qualityValue = q
+			continue
 		}
+
+		// the client didn't specify anything that means "identity;q=1.0"
+		compression.coding = c
+		compression.qualityValue = 1.0
 	}
 
 	if compression.qualityValue == 0 {

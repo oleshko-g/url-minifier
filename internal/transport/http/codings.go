@@ -1,3 +1,4 @@
+// Package http is internal [http.Server] implementation
 package http
 
 import (
@@ -38,10 +39,12 @@ func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityV
 		return parsedAcceptCodings, nil // return the nil map with no error, "no Accept-Encoding"
 	}
 
+	ss := strings.Split(acceptEncodingValues[0], ",")
+
 	parsedAcceptCodings = make(map[coding]qualityValue)
 
-	for _, v := range acceptEncodingValues {
-		pe, err := parseCoding(v)
+	for _, s := range ss {
+		pe, err := parseCoding(strings.TrimSpace(s))
 		if err != nil {
 			// "Accept-Encoding" with an only empty string value means implicit "identity;q=1.0". Set it and break the loop with no error
 			if errors.Is(err, errEmptyCoding) && len(acceptEncodingValues) == 1 {
@@ -70,11 +73,11 @@ func parseCoding(s string) (parsedCoding, error) {
 			errEmptyCoding
 	}
 
-	if !coding(s).valid() {
+	if !coding(before).valid() {
 		return parsedCoding{},
 			fmt.Errorf("%s is invalid coding", s)
 	}
-	pe.coding = coding(s)
+	pe.coding = coding(before)
 
 	if !found { // if ";q=" is not set, then qualityValue is 1.000
 		pe.qualityValue = 1.000
@@ -95,7 +98,7 @@ func parseCoding(s string) (parsedCoding, error) {
 		return parsedCoding{},
 			errors.Join(errors.New("failed to parse quality value '%s' of %s coding"), err)
 	}
-	if parsedFloat < 0.0 || parsedFloat < 1.0 {
+	if parsedFloat < 0.0 && parsedFloat < 1.0 {
 		defer func() { _, _ = pe, parsedFloat }()
 		return parsedCoding{},
 			fmt.Errorf("quality value %s of %s coding doesn't satisfy '0.0 <= quality value <= 1.0'", after, pe.coding)
