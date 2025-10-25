@@ -27,6 +27,7 @@ type service interface {
 	UnMinifyURL(id string) (url string, err error)
 }
 
+// NewServer configues and returns an internal [http.Server]
 func NewServer(s service, cp *Config) *Server {
 	srv := &Server{
 		service: s,
@@ -59,6 +60,7 @@ func NewServer(s service, cp *Config) *Server {
 	return srv
 }
 
+// ListenAndServe starts underlying [http.Server]
 func (s *Server) ListenAndServe() error {
 	s.server.Addr = s.Address().String()
 	log.Printf("Minifier is listening on address: %s\n", s.server.Addr)
@@ -120,21 +122,21 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := validateContentType("text/plain", req.Header)
 		if err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
 
 		url, err := url.Parse(string(data))
 		if err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -143,7 +145,7 @@ func (s Server) minifyURLHandler() http.HandlerFunc {
 
 		minifiedURL, err := s.service.MinifyURL(url.String())
 		if err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -162,13 +164,13 @@ func (s Server) unMinifyURLHandler() http.HandlerFunc {
 		id := req.PathValue("id")
 		if id == "" {
 			err = errors.New("empty id")
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
 		url, err := s.service.UnMinifyURL(id)
 		if err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -188,7 +190,7 @@ type minifyURLResponse struct {
 func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if err := validateContentType("application/json", req.Header); err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -197,7 +199,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		var reqBody minifyURLRequest
 		d := json.NewDecoder(req.Body)
 		if err := d.Decode(&reqBody); err != nil {
-			respondBadRequest(res, err)
+			responseWithError(res, err, http.StatusBadRequest)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -206,7 +208,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		// handle request
 		minifiedURL, err := s.service.MinifyURL(reqBody.URL)
 		if err != nil {
-			respondInternalServerError(res, err)
+			responseWithError(res, err, http.StatusInternalServerError)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -217,7 +219,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		}
 		jsonData, err := json.Marshal(&resBody)
 		if err != nil {
-			respondInternalServerError(res, err)
+			responseWithError(res, err, http.StatusInternalServerError)
 			s.Logger.Err(err).Msg("")
 			return
 		}
@@ -228,12 +230,8 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 	}
 }
 
-func respondBadRequest(res http.ResponseWriter, err error) {
-	res.WriteHeader(http.StatusBadRequest)
-}
-
-func respondInternalServerError(res http.ResponseWriter, err error) {
-	res.WriteHeader(http.StatusInternalServerError)
+func responseWithError(res http.ResponseWriter, err error, statusCode int) {
+	http.Error(res, err.Error(), statusCode)
 }
 
 // validateContentType checks if the `mediaType` exists in the `headers`
