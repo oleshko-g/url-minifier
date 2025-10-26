@@ -74,14 +74,23 @@ func (s *Server) canDecompress(compression coding) bool {
 }
 
 func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) (coding, error) {
-	compression := parsedCoding{
-		coding:       s.Config.canCompress[0],
-		qualityValue: 1.0,
-	}
+	var compression parsedCoding
 
 	for _, c := range s.canCompress {
+		// "1. If no [Accept-Encoding] header field is in the request, any content coding is considered acceptable by the user agent."
+		// [Accent-Encoding]: https://httpwg.org/specs/rfc9110.html#field.accept-encoding
+		if parsedAcceptCodings == nil {
+			compression.coding = c
+			compression.qualityValue = 1.0
+			break
+		}
+
 		// check if the client explicitly specified a coding which the server [canCompress]
 		if q, ok := parsedAcceptCodings[c]; ok {
+
+			if compression.qualityValue == 0 {
+				compression.coding = c
+			}
 
 			if compression.coding == c {
 				compression.qualityValue = q // the specified [qualityValue] overrides the default one
@@ -98,22 +107,37 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 
 		// check if the client implicitly specified a coding which the server [canCompresss]
 		if q, ok := parsedAcceptCodings[codingWildcard]; ok {
-			compression.coding = c
-			compression.qualityValue = q
-			continue
+
+			if compression.coding == c {
+				compression.qualityValue = q // the specified [qualityValue] overrides the default one
+				continue
+			}
+
+			if compression.qualityValue < q {
+				compression.coding = c
+				compression.qualityValue = q
+				continue
+			}
+
+			if compression.qualityValue < q {
+				compression.coding = c
+				compression.qualityValue = q
+				continue
+			}
+
 		}
 
-		// the client didn't specify anything that means "identity;q=1.0"
-		compression.coding = c
-		compression.qualityValue = 1.0
 	}
 
 	if compression.qualityValue == 0 {
-		return "", errors.New("the client has forbidden every coding which the server can compress the response with")
+		return "", errNoCompressionChosen
 	}
 
 	return compression.coding, nil
 }
+
+// the client has forbidden every coding which the server can compress the response with
+var errNoCompressionChosen = errors.New("the client has forbidden every coding which the server can compress a response with")
 
 func (s Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {

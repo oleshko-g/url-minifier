@@ -206,19 +206,83 @@ func TestServer_chooseCompression(t *testing.T) {
 		want                chooseCompressionResult
 	}{
 		{
-			name: "the client specified GZIP",
-			s:    nil,
-			parsedAcceptCodings: map[coding]qualityValue{
-				codingGZIP: 1.0,
-			},
-			want: chooseCompressionResult{coding: codingGZIP, error: nil},
+			name:                "the client specified nothing",
+			s:                   nil,
+			parsedAcceptCodings: nil,
+			want:                chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+		{
+			name:                "the client forbade identity",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 0.0},
+			want:                chooseCompressionResult{coding: "", error: errNoCompressionChosen},
+		},
+		{
+			name:                "the client forbade everything",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingWildcard: 0.0},
+			want:                chooseCompressionResult{coding: "", error: errNoCompressionChosen},
+		},
+		{
+			name:                "the client forbade no compression",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 0.0, codingWildcard: 1.0},
+			want:                chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+		{
+			name:                "the client specified compression over identity",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 0.5, codingWildcard: 1.0},
+			want:                chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+		{
+			name:                "the client specified GZIP",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingGZIP: 1.0},
+			want:                chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+		{
+			name:                "the client specified GZIP over identity",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 0.5, codingGZIP: 1.0},
+			want:                chooseCompressionResult{coding: codingGZIP, error: nil},
+		},
+		{
+			name:                "the client specified identity and forbade compression",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 1.0, codingWildcard: 0.0},
+			want:                chooseCompressionResult{coding: codingIdentity, error: nil},
+		},
+		{
+			name:                "the client specified identity",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 1.0},
+			want:                chooseCompressionResult{coding: codingIdentity, error: nil},
+		},
+		{
+			name:                "the client specified identity over compression",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 1.0, codingWildcard: 0.5},
+			want:                chooseCompressionResult{coding: codingIdentity, error: nil},
+		},
+		{
+			name:                "the client specified identity over GZIP",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 1.0, codingGZIP: 0.5},
+			want:                chooseCompressionResult{coding: codingIdentity, error: nil},
+		},
+		{
+			name:                "the client specified identity and forbade GZIP",
+			s:                   nil,
+			parsedAcceptCodings: map[coding]qualityValue{codingIdentity: 1.0, codingGZIP: 0.0},
+			want:                chooseCompressionResult{coding: codingIdentity, error: nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewServer(tt.s, &Config{})
 			got, gotErr := s.chooseCompression(tt.parsedAcceptCodings)
-			assert.NoError(t, gotErr)
+			assert.Equal(t, tt.want.error, gotErr)
 			assert.Equal(t, tt.want.coding, got)
 		})
 	}

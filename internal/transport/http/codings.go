@@ -115,12 +115,14 @@ var errEmptyCoding = errors.New("empty coding value")
 // parsedCoding represents a valid HTTP coding value used in Content-Encoding or Accept-Encoding HTTP header fields
 type parsedCoding struct {
 	coding
-	qualityValue // default is 1.0
+	qualityValue
 }
 
 type (
-	qualityValue float32 // Quality values, or q-values and q-factors, are used to describe the order of priority of values in a comma-separated list. It is a special syntax allowed in some HTTP headers and in HTML.
-	coding       string  // coding is a string which might be a valid HTTP Content coding listed in [validCodings]
+	// Quality values, or q-values and q-factors, are used to describe the order of priority of values in a comma-separated list. It is a special syntax allowed in some HTTP headers and in HTML.
+	qualityValue float32
+	// coding is a string which might be a valid HTTP Content coding listed in [validCodings]. default is 1.0
+	coding string
 )
 
 func (c coding) valid() bool {
@@ -147,7 +149,7 @@ var validCodings = map[coding]struct{}{
 }
 
 const (
-	codingWildcard    coding = "*"            // wildcard which means "any other coding besides others specified"
+	codingWildcard    coding = "*"            // The wildcard. Which means "any other coding besides the specified"
 	codingIdentity    coding = "identity"     // Reserved	[RFC9110]	Section 12.5.3
 	codingGZIP        coding = "gzip"         // GZIP file format [RFC1952]	[RFC9110]	Section 8.4.1.3
 	codingCompress    coding = "compress"     // UNIX "compress" data format [Welch, T., "A Technique for High Performance Data Compression", IEEE Computer 17(6), June 1984.]	[RFC9110]	Section 8.4.1.1
