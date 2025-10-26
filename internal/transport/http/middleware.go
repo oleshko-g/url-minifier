@@ -2,6 +2,7 @@ package http
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -50,7 +51,10 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 		compression, err := s.chooseCompression(parsedAcceptCodings)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotAcceptable)
+			if errors.Is(err, errNoCompressionChosen) {
+				w.Header().Set("Accept-Encoding", string(s.canCompress.String()))
+			}
+			http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
 			s.Logger.Err(err).Msg("")
 			return
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Server is the internal implementation of [http.Server]
 type Server struct {
 	server *http.Server
 	service

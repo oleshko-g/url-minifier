@@ -9,7 +9,21 @@ import (
 type Config struct {
 	address       address
 	canDecompress map[coding]struct{}
-	canCompress   []coding // MUST contain at least one element. [codingIdentity] MUST be the last element
+	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
+}
+
+type codings []coding
+
+// String returns [codings] elements separated by ", " as a single string
+func (c codings) String() string {
+	var s string
+	for i, coding := range c {
+		if i != 0 && i < len(c) {
+			s += ", "
+		}
+		s += string(coding)
+	}
+	return s
 }
 
 func (c *Config) Address() *address {

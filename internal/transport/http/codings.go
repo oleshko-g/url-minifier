@@ -119,9 +119,10 @@ type parsedCoding struct {
 }
 
 type (
-	// Quality values, or q-values and q-factors, are used to describe the order of priority of values in a comma-separated list. It is a special syntax allowed in some HTTP headers and in HTML.
+	// qualityValue is relative "weight" of a content coding in a comma-separted list. Synatax: ";q=[qualityValue]". Default: "1.0".
+	// [Quality values]: https://httpwg.org/specs/rfc9110.html#quality.values
 	qualityValue float32
-	// coding is a string which might be a valid HTTP Content coding listed in [validCodings]. default is 1.0
+	// coding is a string which might be a valid HTTP Content coding listed in [validCodings].
 	coding string
 )
 
