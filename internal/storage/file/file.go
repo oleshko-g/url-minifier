@@ -15,18 +15,18 @@ import (
 
 // New returns a pointer to a [File] or—if a file [Config.Path().String()] is invalid—an error.
 func New(c *Config) (file *File, err error) {
-	if err = c.filePath.Set(c.filePath.String()); err != nil {
+	if err = c.path.Set(c.path.String()); err != nil {
 		log.Print(fmt.Errorf("c.filePath.Set(c.filePath.String() + fileName): %w", err))
 		return nil, err
 	}
 
-	err = os.MkdirAll(c.filePath.String(), dirPerm)
+	err = os.MkdirAll(c.path.String(), dirPerm)
 	if err != nil {
 		log.Print(fmt.Errorf("err = os.MkdirAll(c.filePath.String(), dirPerm): %w", err))
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(c.path.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		log.Print(fmt.Errorf("fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %w", err))
 		return nil, err
@@ -58,9 +58,6 @@ type record struct {
 
 // Save saves the value under the key or return an error if key already exists
 func (f *File) Save(key, value string) (err error) {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-	defer f.p.Sync()
 	err = save(f, key, value)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
@@ -72,7 +69,10 @@ func (f *File) Save(key, value string) (err error) {
 }
 
 func save(f *File, key, value string) (err error) {
-	if _, err = retrieve(f, key); !errors.Is(err, storageErrors.ErrNotFound) {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	defer f.p.Sync()
+	if _, err = f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
 		return storageErrors.ErrAlreadyExists
 	}
 
@@ -81,12 +81,19 @@ func save(f *File, key, value string) (err error) {
 
 // Retrieve returns a value stored in the [File] by a key or an [ErrNotFound]
 func (f *File) Retrieve(key string) (value string, err error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-	return retrieve(f, key)
+	value, err = f.retrieve(key)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrNotFound) {
+			return "", fmt.Errorf("key %s desn't exists", key)
+		}
+		return "", err
+	}
+	return value, nil
 }
 
-func retrieve(f *File, key string) (value string, err error) {
+func (f *File) retrieve(key string) (value string, err error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
 	rr, err := f.newRecordReader()
 	if err != nil {
 		return "", err
