@@ -26,7 +26,7 @@ func New(c *Config) (file *File, err error) {
 		return nil, err
 	}
 
-	fp, err := os.OpenFile(c.path.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(c.path.String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		log.Print(fmt.Errorf("fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %w", err))
 		return nil, err
@@ -121,7 +121,7 @@ type recordReader struct {
 }
 
 func (f *File) newRecordReader() (*recordReader, error) {
-	fp, err := os.OpenFile(f.Config.Path().String()+fileName, os.O_RDONLY|os.O_CREATE, filePerm)
+	fp, err := os.OpenFile(f.Config.Path().String()+string(os.PathSeparator)+fileName, os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (f *File) newRecordReader() (*recordReader, error) {
 
 // defaults
 const (
-	DefaultPath path   = "./files/"
+	DefaultPath path   = "."
 	fileName    string = "minifiedURLs.json"
 )
 

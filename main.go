@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -77,12 +78,14 @@ func (a *app) setup() (err error) {
 
 	if a.fileConfig.Path().String() == "" {
 		a.Storager = memory.NewStrRecords()
+		slog.Info("The storage is set to memory.")
+	} else {
+		a.Storager, err = file.New(&a.fileConfig)
+		slog.Info("The storage is set to file.")
 	}
-	a.Storager, err = file.New(&a.fileConfig)
 	if err != nil {
 		return err
 	}
-	log.Print("storage set")
 
 	a.Service = minifier.New(a.Storager, &a.minifierConfig)
 	a.Server = http.NewServer(a.Service, &a.httpConfig)
