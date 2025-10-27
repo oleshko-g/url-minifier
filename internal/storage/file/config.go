@@ -22,7 +22,7 @@ type path string
 // Set sets the [file.Config.Path()]
 func (p *path) Set(s string) error {
 	if !fs.ValidPath(s) {
-		slog.Warn(fmt.Sprintf("setting an invalid path%s", s))
+		slog.Warn(fmt.Sprintf("setting an invalid path: %s", s))
 	}
 	*p = path(s)
 	return nil

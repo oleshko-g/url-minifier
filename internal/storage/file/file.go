@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"sync"
 
@@ -65,7 +66,8 @@ func (f *File) Save(key, value string) (err error) {
 	err = f.save(key, value)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
-			return fmt.Errorf("value %s already exists", value)
+			slog.Warn(fmt.Sprintf("key %s already exists", key))
+			return nil
 		}
 		return err
 	}
@@ -87,7 +89,7 @@ func (f *File) Retrieve(key string) (value string, err error) {
 	value, err = f.retrieve(key)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrNotFound) {
-			return "", fmt.Errorf("key %s desn't exists", key)
+			return "", fmt.Errorf("key %s doesn't exists", key)
 		}
 		return "", err
 	}
