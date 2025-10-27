@@ -58,7 +58,11 @@ type record struct {
 
 // Save saves the value under the key or return an error if key already exists
 func (f *File) Save(key, value string) (err error) {
-	err = save(f, key, value)
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	defer f.p.Sync()
+
+	err = f.save(key, value)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
 			return fmt.Errorf("value %s already exists", value)
@@ -68,10 +72,7 @@ func (f *File) Save(key, value string) (err error) {
 	return
 }
 
-func save(f *File, key, value string) (err error) {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-	defer f.p.Sync()
+func (f *File) save(key, value string) (err error) {
 	if _, err = f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
 		return storageErrors.ErrAlreadyExists
 	}
@@ -81,6 +82,8 @@ func save(f *File, key, value string) (err error) {
 
 // Retrieve returns a value stored in the [File] by a key or an [ErrNotFound]
 func (f *File) Retrieve(key string) (value string, err error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
 	value, err = f.retrieve(key)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrNotFound) {
@@ -92,8 +95,6 @@ func (f *File) Retrieve(key string) (value string, err error) {
 }
 
 func (f *File) retrieve(key string) (value string, err error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
 	rr, err := f.newRecordReader()
 	if err != nil {
 		return "", err
@@ -121,7 +122,7 @@ type recordReader struct {
 }
 
 func (f *File) newRecordReader() (*recordReader, error) {
-	fp, err := os.OpenFile(f.Config.Path().String()+string(os.PathSeparator)+fileName, os.O_RDONLY|os.O_CREATE, filePerm)
+	fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
 		return nil, err
 	}
