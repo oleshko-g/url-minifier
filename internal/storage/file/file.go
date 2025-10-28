@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
 	"sync"
@@ -17,19 +16,19 @@ import (
 // New returns a pointer to a [File] or—if a file [Config.Path().String()] is invalid—an error.
 func New(c *Config) (file *File, err error) {
 	if err = c.path.Set(c.path.String()); err != nil {
-		log.Print(fmt.Errorf("c.filePath.Set(c.filePath.String() + fileName): %w", err))
+		slog.Error(fmt.Sprintf(" if err = c.path.Set(c.path.String()); err != nil { %s", err))
 		return nil, err
 	}
 
 	err = os.MkdirAll(c.path.String(), dirPerm)
 	if err != nil {
-		log.Print(fmt.Errorf("err = os.MkdirAll(c.filePath.String(), dirPerm): %w", err))
+		slog.Error(fmt.Sprintf(" err = os.MkdirAll(c.path.String(), dirPerm) %s", err))
 		return nil, err
 	}
 
 	fp, err := os.OpenFile(c.path.String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
-		log.Print(fmt.Errorf("fp, err := os.OpenFile(c.filePath.String()+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %w", err))
+		slog.Error(fmt.Sprintf("fp, err := os.OpenFile(c.filePath.String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %s", err))
 		return nil, err
 	}
 
@@ -88,6 +87,8 @@ func (f *File) Retrieve(key string) (value string, err error) {
 	defer f.mux.RUnlock()
 	value, err = f.retrieve(key)
 	if err != nil {
+		slog.Error(fmt.Sprintf(" value, err = f.retrieve(key) %s", err.Error()))
+
 		if errors.Is(err, storageErrors.ErrNotFound) {
 			return "", fmt.Errorf("key %s doesn't exists", key)
 		}
@@ -99,6 +100,7 @@ func (f *File) Retrieve(key string) (value string, err error) {
 func (f *File) retrieve(key string) (value string, err error) {
 	rr, err := f.newRecordReader()
 	if err != nil {
+		slog.Error(fmt.Sprintf(" rr, err := f.newRecordReader() %s", err.Error()))
 		return "", err
 	}
 	defer rr.file.Close()
@@ -106,6 +108,7 @@ func (f *File) retrieve(key string) (value string, err error) {
 	for {
 		err = rr.decoder.Decode(&fr)
 		if err != nil {
+			slog.Error(fmt.Sprintf(" err = rr.decoder.Decode(&fr) %s", err.Error()))
 			if errors.Is(err, io.EOF) {
 				return "", storageErrors.ErrNotFound
 			}
@@ -126,6 +129,7 @@ type recordReader struct {
 func (f *File) newRecordReader() (*recordReader, error) {
 	fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
+		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm) %s", err.Error()))
 		return nil, err
 	}
 
