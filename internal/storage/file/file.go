@@ -107,6 +107,10 @@ func (f *File) retrieve(key string) (value string, err error) {
 	var fr record
 	for {
 		err = rr.decoder.Decode(&fr)
+		// safe to access [fr] because it's initialized to a zero value of [record]
+		if fr.Key == key {
+			return fr.Value, nil
+		}
 		if err != nil {
 			slog.Error(fmt.Sprintf(" err = rr.decoder.Decode(&fr) %s", err.Error()))
 			if errors.Is(err, io.EOF) {
@@ -114,10 +118,9 @@ func (f *File) retrieve(key string) (value string, err error) {
 			}
 			return "", err
 		}
+		// set fr to zero value before the next Decode
+		fr = record{}
 
-		if fr.Key == key {
-			return fr.Value, nil
-		}
 	}
 }
 
@@ -127,7 +130,7 @@ type recordReader struct {
 }
 
 func (f *File) newRecordReader() (*recordReader, error) {
-	fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
+	fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
 		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm) %s", err.Error()))
 		return nil, err
