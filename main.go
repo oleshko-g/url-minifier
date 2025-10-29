@@ -34,7 +34,7 @@ type app struct {
 
 func (a *app) setup() (err error) {
 	// Set the default config values
-	err = a.fileConfig.Path().Set(string(file.DefaultPath))
+	err = a.fileConfig.Path().Set(string(file.DefaultFilepath))
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (a *app) setup() (err error) {
 	}
 
 	// sets flags
-	flag.Var(a.fileConfig.Path(), "f", fmt.Sprintf("Default: `%s`. Set the file path for the file storage", file.DefaultPath))
+	flag.Var(a.fileConfig.Path(), "f", fmt.Sprintf("Default: `%s`. Set the file path for the file storage", file.DefaultFilepath))
 	flag.Var(a.minifierConfig.BaseURL(), "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
 	flag.Var(a.httpConfig.Address(), "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
 	flag.Parse()

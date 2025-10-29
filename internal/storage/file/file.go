@@ -15,20 +15,9 @@ import (
 
 // New returns a pointer to a [File] or—if a file [Config.Path().String()] is invalid—an error.
 func New(c *Config) (file *File, err error) {
-	if err = c.path.Set(c.path.String()); err != nil {
-		slog.Error(fmt.Sprintf(" if err = c.path.Set(c.path.String()); err != nil { %s", err))
-		return nil, err
-	}
-
-	err = os.MkdirAll(c.path.String(), dirPerm)
+	fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
-		slog.Error(fmt.Sprintf(" err = os.MkdirAll(c.path.String(), dirPerm) %s", err))
-		return nil, err
-	}
-
-	fp, err := os.OpenFile(c.path.String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
-	if err != nil {
-		slog.Error(fmt.Sprintf("fp, err := os.OpenFile(c.filePath.String()+string(os.PathSeparator)+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm): %s", err))
+		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm) : %s", err))
 		return nil, err
 	}
 
@@ -132,7 +121,7 @@ type recordReader struct {
 func (f *File) newRecordReader() (*recordReader, error) {
 	fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
 	if err != nil {
-		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.Path().String()+string(os.PathSeparator)+f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm) %s", err.Error()))
+		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm): %s", err.Error()))
 		return nil, err
 	}
 
@@ -146,14 +135,11 @@ func (f *File) newRecordReader() (*recordReader, error) {
 
 // defaults
 const (
-	DefaultPath path   = "."
-	fileName    string = "minifiedURLs.json"
+	DefaultFilepath path = "minifiedURLs.json"
 )
 
 // UNIX persmissions
 const (
-	// Write Read Execute, Read _ Execute, Read _ Execute
-	dirPerm os.FileMode = 0o755
 	// Write Read _, Read _ _, Read _ _
 	filePerm os.FileMode = 0o644
 )

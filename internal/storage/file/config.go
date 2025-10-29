@@ -8,12 +8,12 @@ import (
 
 // Config represents a [file.File] config
 type Config struct {
-	path path
+	fpath path
 }
 
 // Path returns a pointer to an unexported [file.path] value
 func (c *Config) Path() *path {
-	return &c.path
+	return &c.fpath
 }
 
 // path respresents a valid file in a file system
