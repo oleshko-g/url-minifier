@@ -18,7 +18,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// iterate through Content-Encoding's parsedCodings and---if the server can---decompress each
+		// iterate through Content-Encoding's parsedCodings and---if the server can---decompress each one
 		for _, v := range parsedConentCodings {
 			if !s.canDecompress(v.coding) {
 				err := fmt.Errorf("the server can't decompress the %v coding", v.coding)
@@ -88,7 +88,7 @@ func (cw compressingResponseWriter) Write(b []byte) (int, error) {
 		}
 
 		cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
-		return cw.ResponseWriter.Write(b)
+		return cw.WriteCloser.Write(b)
 	}
 
 	return cw.ResponseWriter.Write(b)
