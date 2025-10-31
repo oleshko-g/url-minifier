@@ -1,11 +1,13 @@
 package http
 
 import (
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -61,6 +63,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		cw := compressingResponseWriter{
 			ResponseWriter: w,
 			coding:         compression,
+			buf:            &bytes.Buffer{},
 		}
 
 		h(cw, req)
@@ -69,26 +72,32 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 type compressingResponseWriter struct {
 	http.ResponseWriter
-	io.WriteCloser
+	buf        *bytes.Buffer
+	compressor io.WriteCloser
 	coding
 }
 
-func (cw compressingResponseWriter) Write(b []byte) (int, error) {
+func (cw compressingResponseWriter) Write(b []byte) (n int, err error) {
 	switch cw.ResponseWriter.Header().Get("Content-Type") {
 	case "application/json", "text/html":
 
 		switch cw.coding {
 		case codingGZIP:
-			cw.WriteCloser = gzip.NewWriter(cw.ResponseWriter)
+			cw.compressor = gzip.NewWriter(cw.buf)
 		case codingIdentity:
 			return cw.ResponseWriter.Write(b) // write without compression
 		}
-		if cw.WriteCloser != nil {
-			defer cw.WriteCloser.Close()
+		if cw.compressor != nil {
+			defer cw.compressor.Close()
 		}
-
+		n, err = cw.compressor.Write(b)
+		if err != nil {
+			return n, err
+		}
 		cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
-		return cw.WriteCloser.Write(b)
+		cw.ResponseWriter.Header().Set("Content-Length", strconv.Itoa(n))
+		nb, err := cw.buf.WriteTo(cw.ResponseWriter)
+		return int(nb), err
 	}
 
 	return cw.ResponseWriter.Write(b)
