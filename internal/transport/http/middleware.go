@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -66,7 +65,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			buf:            &bytes.Buffer{},
 		}
 
-		h(cw, req)
+		h(&cw, req)
 	}
 }
 
@@ -77,29 +76,32 @@ type compressingResponseWriter struct {
 	coding
 }
 
-func (cw compressingResponseWriter) Write(b []byte) (n int, err error) {
+// WriteHeader chooses a compressor based on the "Content-Type" of [http.ResponseWriter]
+func (cw *compressingResponseWriter) WriteHeader(statusCode int) {
+	cw.chooseCompressor()
+	cw.ResponseWriter.WriteHeader(statusCode)
+}
+
+// chooseCompressor might set the compressor and "Content-Encoding" of [http.ResponseWriter] based on its "Content-Type" [http.Header]
+func (cw *compressingResponseWriter) chooseCompressor() {
 	switch cw.ResponseWriter.Header().Get("Content-Type") {
 	case "application/json", "text/html":
-
 		switch cw.coding {
 		case codingGZIP:
-			cw.compressor = gzip.NewWriter(cw.buf)
+			cw.compressor = gzip.NewWriter(cw.ResponseWriter)
+			cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
 		case codingIdentity:
-			return cw.ResponseWriter.Write(b) // write without compression
+			return
 		}
-		if cw.compressor != nil {
-			defer cw.compressor.Close()
-		}
-		n, err = cw.compressor.Write(b)
-		if err != nil {
-			return n, err
-		}
-		cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
-		cw.ResponseWriter.Header().Set("Content-Length", strconv.Itoa(n))
-		nb, err := cw.buf.WriteTo(cw.ResponseWriter)
-		return int(nb), err
+		return
 	}
+}
 
+func (cw *compressingResponseWriter) Write(b []byte) (n int, err error) {
+	if cw.compressor != nil {
+		defer cw.compressor.Close()
+		return cw.compressor.Write(b)
+	}
 	return cw.ResponseWriter.Write(b)
 }
 
