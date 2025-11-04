@@ -41,7 +41,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		// parse the Accept-Encdoing(s) the client could specify in the request and---if the server can---compress the response
+		// parse the Accept-Encoding(s) the client could specify in the request and---if the server can---compress the response
 		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,7 +106,7 @@ func (cw *compressingResponseWriter) chooseCompressor() {
 		switch cw.coding {
 		case codingGZIP:
 			cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
-			cw.ResponseWriter.Header().Del("Content-Length") // compresstion will change the content-length which a handler might've set
+			cw.ResponseWriter.Header().Del("Content-Length") // compression will change the content-length which a handler might've set
 			cw.compressor = gzip.NewWriter(cw.ResponseWriter)
 		case codingIdentity:
 			// no compression

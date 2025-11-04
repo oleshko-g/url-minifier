@@ -1,4 +1,4 @@
-// Package http is internal [http.Server] implementation
+// Package http is an internal [http.Server] implementation
 package http
 
 import (
@@ -119,7 +119,7 @@ type parsedCoding struct {
 }
 
 type (
-	// qualityValue is relative "weight" of a content coding in a comma-separted list. Synatax: ";q=[qualityValue]". Default: "1.0".
+	// qualityValue is relative "weight" of a content coding in a comma-separated list. Syntax: ";q=[qualityValue]". Default: "1.0".
 	// [Quality values]: https://httpwg.org/specs/rfc9110.html#quality.values
 	qualityValue float32
 	// coding is a string which might be a valid HTTP Content coding listed in [validCodings].

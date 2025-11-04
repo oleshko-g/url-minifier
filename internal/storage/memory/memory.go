@@ -1,4 +1,4 @@
-// Package memory is an im-memory implementation of [minifier.Storager]
+// Package memory is an in-memory implementation of [minifier.Storager]
 package memory
 
 import (

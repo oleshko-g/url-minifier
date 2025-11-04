@@ -13,7 +13,7 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-// New returns a pointer to a [File] or—if a file [Config.Path().String()] is invalid—an error.
+// New returns a pointer to an opened [File] or an error
 func New(c *Config) (file *File, err error) {
 	fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
@@ -138,7 +138,7 @@ const (
 	DefaultFilepath path = "minifiedURLs.json"
 )
 
-// UNIX persmissions
+// UNIX permissions
 const (
 	// Write Read _, Read _ _, Read _ _
 	filePerm os.FileMode = 0o644

@@ -1,4 +1,4 @@
-// Package errors is the internal srorage package
+// Package errors is the internal storage package
 package errors
 
 import (
@@ -8,6 +8,6 @@ import (
 var (
 	// ErrNotFound is the error returned when a record is not found
 	ErrNotFound = errors.New("not found")
-	// ErrAlreadyExists is the error return whena a recod already exists
+	// ErrAlreadyExists is the error return when a record already exists
 	ErrAlreadyExists = errors.New("already exists")
 )

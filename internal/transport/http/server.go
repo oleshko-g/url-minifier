@@ -33,7 +33,7 @@ type logger interface {
 	Info(msg string, args ...any)
 }
 
-// NewServer configues and returns an internal [http.Server]
+// NewServer configures and returns an internal [http.Server]
 func NewServer(s service, cp *Config) *Server {
 	srv := &Server{
 		service: s,
@@ -110,7 +110,7 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 
 		}
 
-		// check if the client implicitly specified a coding which the server [canCompresss]
+		// check if the client implicitly specified a coding which the server [canCompress]
 		if q, ok := parsedAcceptCodings[codingWildcard]; ok {
 
 			if compression.coding == c {

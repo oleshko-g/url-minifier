@@ -16,7 +16,7 @@ func (c *Config) Path() *path { // revive:disable-line:unexported-return provide
 	return &c.fpath
 }
 
-// path respresents a valid file in a file system
+// path represents a valid file in a file system
 type path string
 
 // Set sets the [file.Config.Path()]

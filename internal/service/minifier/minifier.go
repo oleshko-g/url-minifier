@@ -17,7 +17,7 @@ type Storager interface {
 	Retrieve(key string) (value string, err error)
 }
 
-// New initializes a new URL minifier service set up with the passed [Storager] and [Config]
+// New configures a URL minifier service with the passed [Storager] and [Config]
 func New(s Storager, cp *Config) *Service {
 	return &Service{
 		storage: s,
