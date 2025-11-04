@@ -49,6 +49,8 @@ type record struct {
 func (f *File) Save(key, value string) (err error) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
+	// TODO: sync every 100 ms instead of every write
+	// TODO: add in-memory storage and update on every Sync()
 	defer f.p.Sync()
 
 	err = f.save(key, value)
@@ -87,6 +89,7 @@ func (f *File) Retrieve(key string) (value string, err error) {
 }
 
 func (f *File) retrieve(key string) (value string, err error) {
+	// TODO: lookup in-memory storage first
 	rr, err := f.newRecordReader()
 	if err != nil {
 		slog.Error(fmt.Sprintf(" rr, err := f.newRecordReader() %s", err.Error()))
