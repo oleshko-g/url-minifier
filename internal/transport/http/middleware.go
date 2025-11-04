@@ -14,7 +14,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		parsedConentCodings, err := parseContentEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
@@ -23,7 +23,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			if !s.canDecompress(v.coding) {
 				err := fmt.Errorf("the server can't decompress the %v coding", v.coding)
 				http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-				s.Logger.Err(err).Msg("")
+				s.logger.Error(err.Error())
 				return
 			}
 
@@ -32,7 +32,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 				gzr, err := gzip.NewReader(req.Body)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					s.Logger.Err(err).Msg("")
+					s.logger.Error(err.Error())
 					return
 				}
 				defer gzr.Close()
@@ -45,7 +45,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		parsedAcceptCodings, err := parseAcceptEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
@@ -55,7 +55,7 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 				w.Header().Set("Accept-Encoding", string(s.canCompress.String()))
 			}
 			http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 		cw := compressingResponseWriter{
@@ -136,18 +136,16 @@ func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 		h(&lw, req)
 
-		// log requst
-		s.Logger.Info().
-			Str("URI", req.RequestURI).
-			Str("Method", req.Method).
-			Dur("Duration, ns", time.Since(start)).
-			Msg("")
+		s.logger.Info("Request:",
+			"URI", req.RequestURI,
+			"Method", req.Method,
+			"Duration, ns", time.Since(start),
+		)
 
-		// log response
-		s.Logger.Info().
-			Int("Status Code", lw.statusCode).
-			Int("Content size, bytes", lw.contentLength).
-			Msg("")
+		s.logger.Info("Response:",
+			"Status Code", lw.statusCode,
+			"Content size, bytes", lw.contentLength,
+		)
 	}
 }
 

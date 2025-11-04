@@ -3,16 +3,15 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 
 	"github.com/go-chi/chi"
-	"github.com/rs/zerolog"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -20,12 +19,18 @@ type Server struct {
 	server *http.Server
 	service
 	*Config
-	zerolog.Logger
+	logger
 }
 
 type service interface {
 	MinifyURL(url string) (minifiedURL string, err error)
 	UnMinifyURL(id string) (url string, err error)
+}
+
+type logger interface {
+	Debug(msg string, args ...any)
+	Error(msg string, args ...any)
+	Info(msg string, args ...any)
 }
 
 // NewServer configues and returns an internal [http.Server]
@@ -55,8 +60,7 @@ func NewServer(s service, cp *Config) *Server {
 				srv.minifyURLJSONHandler())))
 	srv.server.Handler = r
 
-	zl := zerolog.New(os.Stderr).With().Timestamp().Logger()
-	srv.Logger = zl
+	srv.logger = slog.New(slog.Default().Handler())
 
 	return srv
 }
@@ -64,7 +68,7 @@ func NewServer(s service, cp *Config) *Server {
 // ListenAndServe starts underlying [http.Server]
 func (s *Server) ListenAndServe() error {
 	s.server.Addr = s.Address().String()
-	log.Printf("Minifier is listening on address: %s\n", s.server.Addr)
+	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
 	return s.server.ListenAndServe()
 }
 
@@ -140,62 +144,62 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 // the client has forbidden every coding which the server can compress the response with
 var errNoCompressionChosen = errors.New("the client has forbidden every coding which the server can compress a response with")
 
-func (s Server) minifyURLHandler() http.HandlerFunc {
+func (s *Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := validateContentType("text/plain", req.Header)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
 		data, err := io.ReadAll(req.Body)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
 		url, err := url.Parse(string(data))
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
-		log.Printf("Original URL: %s", url)
+		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
 		minifiedURL, err := s.service.MinifyURL(url.String())
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
-		log.Printf("minifiedURL: %s", minifiedURL)
+		s.logger.Debug(fmt.Sprintf("minifiedURL: %s", minifiedURL))
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(minifiedURL))
-		log.Printf("%+v\n", res)
 	}
 }
 
-func (s Server) unMinifyURLHandler() http.HandlerFunc {
+func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var err error
 		id := req.PathValue("id")
 		if id == "" {
 			err = errors.New("empty id")
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 		url, err := s.service.UnMinifyURL(id)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
+
 		res.Header().Add("Location", url)
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusTemporaryRedirect)
@@ -209,11 +213,11 @@ type minifyURLResponse struct {
 	Result string `json:"result"`
 }
 
-func (s Server) minifyURLJSONHandler() http.HandlerFunc {
+func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if err := validateContentType("application/json", req.Header); err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
@@ -222,7 +226,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		d := json.NewDecoder(req.Body)
 		if err := d.Decode(&reqBody); err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 		defer req.Body.Close()
@@ -231,7 +235,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		minifiedURL, err := s.service.MinifyURL(reqBody.URL)
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 
@@ -242,7 +246,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 		jsonData, err := json.Marshal(&resBody)
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
-			s.Logger.Err(err).Msg("")
+			s.logger.Error(err.Error())
 			return
 		}
 		res.Header().Set("Content-Type", "application/json")

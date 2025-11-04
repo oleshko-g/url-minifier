@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 
@@ -18,9 +17,10 @@ var a app
 
 func main() {
 	if err := a.setup(); err != nil {
-		log.Fatal(err)
+		slog.Error(err.Error())
+		os.Exit(1)
 	}
-	log.Fatal(a.Server.ListenAndServe())
+	slog.Error(a.Server.ListenAndServe().Error())
 }
 
 type app struct {
@@ -90,8 +90,8 @@ func (a *app) setup() (err error) {
 	a.Service = minifier.New(a.Storager, &a.minifierConfig)
 	a.Server = http.NewServer(a.Service, &a.httpConfig)
 
-	log.Printf("Base URL is set to `%s`", a.Service.Config.BaseURL().String())
-	log.Printf("Server Address is set to `%s`", a.Server.Config.Address().String())
+	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL().String()))
+	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.Server.Config.Address().String()))
 
 	return nil
 }

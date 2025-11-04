@@ -3,7 +3,6 @@ package minifier
 import (
 	"crypto/md5"
 	"encoding/base64"
-	"log"
 )
 
 type Service struct {
@@ -32,8 +31,6 @@ func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
 	}
 
 	minifiedURL = s.Config.BaseURL().String() + "/" + minifiedID
-
-	log.Printf("minifiedURL: %s", minifiedURL)
 
 	return minifiedURL, nil
 }
