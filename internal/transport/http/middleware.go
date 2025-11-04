@@ -106,6 +106,7 @@ func (cw *compressingResponseWriter) chooseCompressor() {
 		switch cw.coding {
 		case codingGZIP:
 			cw.ResponseWriter.Header().Set("Content-Encoding", string(cw.coding))
+			cw.ResponseWriter.Header().Del("Content-Length") // compresstion will change the content-length which a handler might've set
 			cw.compressor = gzip.NewWriter(cw.ResponseWriter)
 		case codingIdentity:
 			// no compression
@@ -116,7 +117,10 @@ func (cw *compressingResponseWriter) chooseCompressor() {
 func (cw *compressingResponseWriter) write(dataToCompress []byte) (n int, err error) {
 	if cw.compressor != nil {
 		n, err = cw.compressor.Write(dataToCompress)
-		cw.compressor.Flush() // need to close to Flush compressor's in memory buffer
+		if err != nil {
+			err = cw.compressor.Flush() // need to close to Flush compressor's in memory buffer
+			return n, err
+		}
 		return n, err
 	}
 	return 0, errors.New("compressor is nil")

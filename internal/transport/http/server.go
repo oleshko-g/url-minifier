@@ -246,6 +246,7 @@ func (s Server) minifyURLJSONHandler() http.HandlerFunc {
 			return
 		}
 		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(jsonData))
 	}
