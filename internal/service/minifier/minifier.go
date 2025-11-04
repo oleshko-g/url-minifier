@@ -28,6 +28,8 @@ func New(s Storager, cp *Config) *Service {
 }
 
 // MinifyURL takes any string encodes it and returns the minified URL or an error
+//
+// TODO: add tests
 func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
 	minifiedID := encode([]byte(url), s.MaxLen)
 
@@ -42,10 +44,13 @@ func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
 }
 
 // UnMinifyURL takes an id of the minified URL and returns the stored original URL or an error
+//
+// TODO: add tests
 func (s *Service) UnMinifyURL(id string) (url string, err error) {
 	return s.storage.Retrieve(id)
 }
 
+// TODO: research if truncation might lead to collisions
 func encode(data []byte, maxLen int) string {
 	checksum := md5.Sum(data)
 	return base64.RawURLEncoding.EncodeToString(checksum[:maxLen])

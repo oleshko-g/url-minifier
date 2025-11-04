@@ -46,6 +46,8 @@ type record struct {
 }
 
 // Save saves the value under the key or return an error if key already exists
+//
+// TODO: add tests
 func (f *File) Save(key, value string) (err error) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
@@ -73,6 +75,8 @@ func (f *File) save(key, value string) (err error) {
 }
 
 // Retrieve returns a value stored in the [File] by a key or an [ErrNotFound]
+//
+// TODO: add tests
 func (f *File) Retrieve(key string) (value string, err error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -112,7 +116,6 @@ func (f *File) retrieve(key string) (value string, err error) {
 		}
 		// set fr to zero value before the next Decode
 		fr = record{}
-
 	}
 }
 

@@ -33,6 +33,8 @@ func parseContentEncoding(h http.Header) (parsedContentCodings []parsedCoding, e
 //   - If "Accept-Encoding" is absent it returns a nil [parsedAcceptCodings] map and a nil error
 //   - Otherwise it parses "Accept-Encoding" existing values and returns a populated [parsedAcceptCodings] map or a parsing error
 //   - If [codingIdentity] is not specified explicitly it sets it in the [parsedAcceptCodings] map as if "identity;q=1.0" was parsed
+//
+// TODO: add tests
 func parseAcceptEncoding(h http.Header) (parsedAcceptCodings map[coding]qualityValue, err error) {
 	acceptEncodingValues := h.Values("Accept-Encoding")
 	if acceptEncodingValues == nil {
