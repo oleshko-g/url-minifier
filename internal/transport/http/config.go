@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
 	address       address
 	canDecompress map[coding]struct{}
@@ -26,7 +27,8 @@ func (c codings) String() string {
 	return s
 }
 
-func (c *Config) Address() *address {
+// Address returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) Address() *address { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.address
 }
 

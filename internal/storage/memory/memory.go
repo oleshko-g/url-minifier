@@ -1,3 +1,4 @@
+// Package memory is an im-memory implementation of [minifier.Storager]
 package memory
 
 import (
@@ -7,7 +8,8 @@ import (
 	"github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-func NewStrRecords() *strRecords {
+// NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
+func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
 	return &strRecords{
 		mux: sync.RWMutex{},
 		m:   make(map[string]string),

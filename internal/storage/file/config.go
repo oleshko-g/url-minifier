@@ -11,8 +11,8 @@ type Config struct {
 	fpath path
 }
 
-// Path returns a pointer to an unexported [file.path] value
-func (c *Config) Path() *path {
+// Path returns a pointer to the [flag.Value] to set the [File]
+func (c *Config) Path() *path { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.fpath
 }
 

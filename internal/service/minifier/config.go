@@ -1,3 +1,4 @@
+// Package minifier is an implementation of [server.Service]
 package minifier
 
 import (
@@ -5,13 +6,14 @@ import (
 	"net/url"
 )
 
+// Config contains fields and [flag.Value]s to set up the URL minifier
 type Config struct {
 	baseURL baseURL // domain parameter because the http server host address could be different
 	MaxLen  int
 }
 
 // BaseURL returns a pointer to baseURL unexported type. Getter is used in case the structure of baseURL changes
-func (c *Config) BaseURL() *baseURL {
+func (c *Config) BaseURL() *baseURL { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.baseURL
 }
 

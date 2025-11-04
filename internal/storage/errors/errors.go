@@ -1,3 +1,4 @@
+// Package errors is the internal srorage package
 package errors
 
 import (
