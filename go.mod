@@ -1,6 +1,6 @@
 module github.com/oleshko-g/url-minifier
 
-go 1.24.5
+go 1.25.3
 
 require (
 	github.com/go-chi/chi v0.0.0-00010101000000-000000000000

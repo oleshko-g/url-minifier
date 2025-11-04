@@ -17,12 +17,15 @@ import (
 // Server is the internal implementation of [http.Server]
 type Server struct {
 	server *http.Server
-	service
+	Service
 	*Config
 	logger
 }
 
-type service interface {
+// Service is the expected URL minifier service
+//
+//go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
+type Service interface {
 	MinifyURL(url string) (minifiedURL string, err error)
 	UnMinifyURL(id string) (url string, err error)
 }
@@ -34,9 +37,9 @@ type logger interface {
 }
 
 // NewServer configures and returns an internal [http.Server]
-func NewServer(s service, cp *Config) *Server {
+func NewServer(s Service, cp *Config) *Server {
 	srv := &Server{
-		service: s,
+		Service: s,
 		server:  &http.Server{},
 		Config:  cp,
 	}
@@ -169,7 +172,7 @@ func (s *Server) minifyURLHandler() http.HandlerFunc {
 
 		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
-		minifiedURL, err := s.service.MinifyURL(url.String())
+		minifiedURL, err := s.Service.MinifyURL(url.String())
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
 			s.logger.Error(err.Error())
@@ -193,7 +196,7 @@ func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 			s.logger.Error(err.Error())
 			return
 		}
-		url, err := s.service.UnMinifyURL(id)
+		url, err := s.Service.UnMinifyURL(id)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
@@ -232,7 +235,7 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 		defer req.Body.Close()
 
 		// handle request
-		minifiedURL, err := s.service.MinifyURL(reqBody.URL)
+		minifiedURL, err := s.Service.MinifyURL(reqBody.URL)
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
 			s.logger.Error(err.Error())

@@ -12,6 +12,8 @@ type Service struct {
 }
 
 // Storager is the expected implementation of storage for the URL minifier
+//
+//go:generate moq -pkg file -out ../../mock/storage/storage.go . Storager
 type Storager interface {
 	Save(key, value string) error
 	Retrieve(key string) (value string, err error)

@@ -201,7 +201,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	}
 	tests := []struct {
 		name                string // description of this test case
-		s                   service
+		s                   Service
 		parsedAcceptCodings map[coding]qualityValue
 		want                chooseCompressionResult
 	}{
