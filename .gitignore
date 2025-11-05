@@ -1,3 +1,6 @@
+# env
+.env
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -13,3 +16,6 @@
 
 # Binary
 url-minifier
+
+# file storage
+minifiedURLs.json
