@@ -49,6 +49,8 @@ func NewServer(s Service, cp *Config) *Server {
 
 	r := chi.NewRouter()
 	r.Use()
+	r.Get("/ping", srv.withLoggingMiddleware(
+		srv.pingHandler()))
 	r.Post("/",
 		srv.withLoggingMiddleware(
 			srv.withEncodingMiddleware(
@@ -146,6 +148,13 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 
 // the client has forbidden every coding which the server can compress the response with
 var errNoCompressionChosen = errors.New("the client has forbidden every coding which the server can compress a response with")
+
+func (s *Server) pingHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+		res.WriteHeader(http.StatusOK)
+	}
+}
 
 func (s *Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
