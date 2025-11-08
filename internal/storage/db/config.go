@@ -1,5 +1,5 @@
-// Package sql is internal implementation of SQL
-package sql
+// Package db is the base package for db servers
+package db
 
 // Config represents a config of an SQL database
 type Config struct {
