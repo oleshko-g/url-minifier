@@ -28,6 +28,7 @@ type Server struct {
 type Service interface {
 	MinifyURL(url string) (minifiedURL string, err error)
 	UnMinifyURL(id string) (url string, err error)
+	Ping() error
 }
 
 type logger interface {
@@ -152,6 +153,12 @@ var errNoCompressionChosen = errors.New("the client has forbidden every coding w
 func (s *Server) pingHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		defer req.Body.Close()
+		err := s.Service.Ping()
+		if err != nil {
+			responseWithError(res, err, http.StatusInternalServerError)
+			s.logger.Error(err.Error())
+			return
+		}
 		res.WriteHeader(http.StatusOK)
 	}
 }

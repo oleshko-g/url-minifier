@@ -21,6 +21,9 @@ var _ http.Service = &ServiceMock{}
 //			MinifyURLFunc: func(url string) (string, error) {
 //				panic("mock out the MinifyURL method")
 //			},
+//			PingFunc: func() error {
+//				panic("mock out the Ping method")
+//			},
 //			UnMinifyURLFunc: func(id string) (string, error) {
 //				panic("mock out the UnMinifyURL method")
 //			},
@@ -34,6 +37,9 @@ type ServiceMock struct {
 	// MinifyURLFunc mocks the MinifyURL method.
 	MinifyURLFunc func(url string) (string, error)
 
+	// PingFunc mocks the Ping method.
+	PingFunc func() error
+
 	// UnMinifyURLFunc mocks the UnMinifyURL method.
 	UnMinifyURLFunc func(id string) (string, error)
 
@@ -44,6 +50,9 @@ type ServiceMock struct {
 			// URL is the url argument value.
 			URL string
 		}
+		// Ping holds details about calls to the Ping method.
+		Ping []struct {
+		}
 		// UnMinifyURL holds details about calls to the UnMinifyURL method.
 		UnMinifyURL []struct {
 			// ID is the id argument value.
@@ -51,6 +60,7 @@ type ServiceMock struct {
 		}
 	}
 	lockMinifyURL   sync.RWMutex
+	lockPing        sync.RWMutex
 	lockUnMinifyURL sync.RWMutex
 }
 
@@ -83,6 +93,33 @@ func (mock *ServiceMock) MinifyURLCalls() []struct {
 	mock.lockMinifyURL.RLock()
 	calls = mock.calls.MinifyURL
 	mock.lockMinifyURL.RUnlock()
+	return calls
+}
+
+// Ping calls PingFunc.
+func (mock *ServiceMock) Ping() error {
+	if mock.PingFunc == nil {
+		panic("ServiceMock.PingFunc: method is nil but Service.Ping was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockPing.Lock()
+	mock.calls.Ping = append(mock.calls.Ping, callInfo)
+	mock.lockPing.Unlock()
+	return mock.PingFunc()
+}
+
+// PingCalls gets all the calls that were made to Ping.
+// Check the length with:
+//
+//	len(mockedService.PingCalls())
+func (mock *ServiceMock) PingCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockPing.RLock()
+	calls = mock.calls.Ping
+	mock.lockPing.RUnlock()
 	return calls
 }
 

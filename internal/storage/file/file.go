@@ -40,6 +40,11 @@ func (f *File) Close() error {
 	return f.p.Close()
 }
 
+// Ping is no-op for [File]
+func (f *File) Ping() error {
+	return nil
+}
+
 type record struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`

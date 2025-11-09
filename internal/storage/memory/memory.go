@@ -16,6 +16,11 @@ func NewStrRecords() *strRecords { // revive:disable-line:unexported-return prov
 	}
 }
 
+// Ping is no-op for [strRecords]
+func (s *strRecords) Ping() error {
+	return nil
+}
+
 type strRecords struct {
 	mux sync.RWMutex
 	m   map[string]string

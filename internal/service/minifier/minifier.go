@@ -17,6 +17,7 @@ type Service struct {
 type Storager interface {
 	Save(key, value string) error
 	Retrieve(key string) (value string, err error)
+	Ping() error
 }
 
 // New configures a URL minifier service with the passed [Storager] and [Config]
@@ -25,6 +26,11 @@ func New(s Storager, cp *Config) *Service {
 		storage: s,
 		Config:  cp,
 	}
+}
+
+// Ping check if the storage is up
+func (s *Service) Ping() error {
+	return s.storage.Ping()
 }
 
 // MinifyURL takes any string encodes it and returns the minified URL or an error

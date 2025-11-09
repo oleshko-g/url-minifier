@@ -90,11 +90,11 @@ func (a *app) setup() (err error) {
 		a.Storager, err = db.New(&a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
-		a.Storager = memory.NewStrRecords()
-		slog.Info("The storage is set to memory.")
-	} else {
 		a.Storager, err = file.New(&a.fileConfig)
 		slog.Info("The storage is set to file.")
+	} else {
+		a.Storager = memory.NewStrRecords()
+		slog.Info("The storage is set to memory.")
 	}
 	if err != nil {
 		return err
