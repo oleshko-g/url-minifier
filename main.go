@@ -8,9 +8,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	"github.com/oleshko-g/url-minifier/internal/storage/file"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
-	"github.com/oleshko-g/url-minifier/internal/storage/sql"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
 )
 
@@ -25,7 +25,7 @@ func main() {
 }
 
 type app struct {
-	sqlConfig      sql.Config
+	sqlConfig      db.Config
 	fileConfig     file.Config
 	minifierConfig minifier.Config
 	httpConfig     http.Config
