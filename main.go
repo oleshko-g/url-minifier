@@ -86,7 +86,10 @@ func (a *app) setup() (err error) {
 	flag.Var(a.httpConfig.Address(), "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
 	flag.Parse()
 
-	if a.fileConfig.Path().String() == "" {
+	if a.sqlConfig.String() != "" {
+		a.Storager, err = db.New(&a.sqlConfig)
+		slog.Info("The storage is set to db.")
+	} else if a.fileConfig.Path().String() != "" {
 		a.Storager = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	} else {

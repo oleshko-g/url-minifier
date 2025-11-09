@@ -34,6 +34,7 @@ func (d *dataSource) Set(s string) error {
 		_ = url
 		return storageErrors.ErrUnsupportedDataSource
 	}
+	d.driver = driver(url.Scheme)
 
 	d.name = url.String()
 
