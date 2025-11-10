@@ -1,9 +1,11 @@
-package db
+// Package sql is the internal implementation of [database/sql]
+package sql
 
 import (
 	"database/sql"
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
+	"github.com/oleshko-g/url-minifier/internal/storage/db"
 )
 
 // Queries defines the possible queries to a database
@@ -24,8 +26,8 @@ func (s *Storage) Ping() error {
 }
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
-func New(c *Config) (s *Storage, err error) {
-	db, err := sql.Open(string(c.dataSource.driver), c.DSN().String())
+func New(c *db.Config) (s *Storage, err error) {
+	db, err := sql.Open(c.DSN().Driver(), c.DSN().String())
 	if err != nil {
 		return nil, err
 	}

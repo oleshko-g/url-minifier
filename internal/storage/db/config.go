@@ -45,6 +45,10 @@ func (d *dataSource) String() string {
 	return d.name
 }
 
+func (d *dataSource) Driver() string {
+	return string(d.driver)
+}
+
 type driver string
 
 const postgres driver = "postgres"

@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
+	"github.com/oleshko-g/url-minifier/internal/storage/db/sql"
 	"github.com/oleshko-g/url-minifier/internal/storage/file"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
@@ -87,7 +88,7 @@ func (a *app) setup() (err error) {
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {
-		a.Storager, err = db.New(&a.sqlConfig)
+		a.Storager, err = sql.New(&a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
 		a.Storager, err = file.New(&a.fileConfig)
