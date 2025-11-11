@@ -23,6 +23,7 @@ type dataSource struct {
 	driver
 }
 
+// Set parses s and sets [DSN] and [Driver] or returns an error
 func (d *dataSource) Set(s string) error {
 	url, err := url.Parse(s)
 	if err != nil {
