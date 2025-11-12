@@ -3,6 +3,7 @@ package sql
 
 import (
 	"database/sql"
+	"time"
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
@@ -23,6 +24,24 @@ type Storage struct {
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {
 	return s.db.Ping()
+}
+
+// Save saves into the string_k_v db table
+func (s Storage) Save(key, value string) error {
+	_, err := s.db.Exec(
+		`
+		INSERT INTO
+				string_k_v (k, v, updated_at, created_at, deleted_at)
+		VALUES
+				($1, $2, $3, $4, $5);
+		`,
+		key, value, time.Now().UTC(), sql.NullTime{}, sql.NullTime{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
