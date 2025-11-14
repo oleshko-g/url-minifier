@@ -1,8 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS string_k_v (
-    k TEXT PRIMARY KEY,
-    v TEXT,
+CREATE TABLE IF NOT EXISTS strings (
+    id TEXT PRIMARY KEY,
+    value TEXT,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW (),
     deleted_at TIMESTAMPTZ DEFAULT NULL
@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS string_k_v (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS string_k_v;
+DROP TABLE IF EXISTS strings;
 -- +goose StatementEnd
