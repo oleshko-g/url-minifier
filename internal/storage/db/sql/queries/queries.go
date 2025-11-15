@@ -7,3 +7,8 @@ import _ "embed"
 //
 //go:embed insertString.sql
 var InsertString string
+
+// SelectString is the SQL statement to select a string by id from a db
+//
+//go:embed selectString.sql
+var SelectString string

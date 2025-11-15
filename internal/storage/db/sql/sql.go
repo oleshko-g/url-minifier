@@ -3,11 +3,15 @@ package sql
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"log/slog"
 	"time"
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	query "github.com/oleshko-g/url-minifier/internal/storage/db/sql/queries"
+	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
 // Storage represents an internal implementation of [sql.DB]
@@ -21,12 +25,24 @@ func (s *Storage) Ping() error {
 }
 
 // Save inserts value under key into the underlying db
-func (s *Storage) Save(key, value string) error {
-	return s.save(key, value)
+func (s *Storage) Save(key, value string) (err error) {
+	err = s.save(key, value)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			slog.Warn(fmt.Sprintf("key %s already exists", key))
+			return nil
+		}
+		return err
+	}
+	return
 }
 
 // Save saves into the string_k_v db table
 func (s *Storage) save(key, value string) error {
+	if _, err := s.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
+		return storageErrors.ErrAlreadyExists
+	}
+
 	_, err := s.db.Exec(
 		query.InsertString,
 		key, value, sql.Named("created_at", time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
@@ -40,13 +56,22 @@ func (s *Storage) save(key, value string) error {
 
 // Retrieve selects value under key from the underlying db
 func (s *Storage) Retrieve(key string) (value string, err error) {
-	// TODO: write func selectKeyValue(key string) (value string, err error)
-	_, _, _ = key, value, err
-	return "", nil
+	return s.retrieve(key)
 }
 
 func (s *Storage) retrieve(key string) (value string, err error) {
-	return "", nil
+	row := s.db.QueryRow(query.SelectString, key)
+
+	err = row.Scan(&value)
+	if err != nil {
+		_ = value
+		if errors.Is(err, sql.ErrNoRows) {
+			err = storageErrors.ErrNotFound
+		}
+		return "", err
+	}
+
+	return value, nil
 }
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
