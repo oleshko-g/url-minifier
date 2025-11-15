@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
+	query "github.com/oleshko-g/url-minifier/internal/storage/db/sql/queries"
 )
 
 // Storage represents an internal implementation of [sql.DB]
@@ -21,7 +22,20 @@ func (s *Storage) Ping() error {
 
 // Save inserts value under key into the underlying db
 func (s *Storage) Save(key, value string) error {
-	return s.insert(key, value)
+	return s.save(key, value)
+}
+
+// Save saves into the string_k_v db table
+func (s *Storage) save(key, value string) error {
+	_, err := s.db.Exec(
+		query.InsertString,
+		key, value, sql.Named("created_at", time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Retrieve selects value under key from the underlying db
@@ -31,22 +45,8 @@ func (s *Storage) Retrieve(key string) (value string, err error) {
 	return "", nil
 }
 
-// Save saves into the string_k_v db table
-func (s *Storage) insert(key, value string) error {
-	_, err := s.db.Exec(
-		`
-		INSERT INTO
-				strings (id, s, created_at, updated_at, deleted_at)
-		VALUES
-				($1, $2, $3, $4, $5);
-		`,
-		key, value, time.Now().UTC(), sql.NullTime{}, sql.NullTime{},
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (s *Storage) retrieve(key string) (value string, err error) {
+	return "", nil
 }
 
 // New configures and open a new connection to the db and returns a [Storage] or an error

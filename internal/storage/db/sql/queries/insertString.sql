@@ -1,0 +1,4 @@
+INSERT INTO
+    strings (id, value, created_at, updated_at, deleted_at)
+VALUES
+    ($1, $2, $3, $4, $5);
