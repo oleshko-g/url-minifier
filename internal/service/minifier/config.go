@@ -2,7 +2,7 @@
 package minifier
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 )
 
@@ -35,19 +35,19 @@ func (b *baseURL) Set(s string) error {
 	}
 
 	if url.Scheme == "" {
-		return errors.New("error parsing base URL. empty scheme")
+		return fmt.Errorf("%w: %s", errBaseURL, "empty scheme")
 	}
 	if url.Scheme != "http" {
-		return errors.New("error parsing base URL. scheme MUST be 'http'")
+		return fmt.Errorf("%w: %s", errBaseURL, "scheme MUST be 'http'")
 	}
 	b.scheme = url.Scheme
 
 	if b.host = url.Hostname(); url.Hostname() == "" {
-		return errors.New("error parsing Base URL. empty host")
+		return fmt.Errorf("%w: %s", errBaseURL, "empty host")
 	}
 
 	if b.port = url.Port(); url.Port() == "" {
-		return errors.New("error parsing Base URL. empty port")
+		return fmt.Errorf("%w: %s", errBaseURL, "empty port")
 	}
 
 	return nil
