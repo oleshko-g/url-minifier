@@ -40,15 +40,16 @@ func (s *Storage) Save(key, value string) (err error) {
 
 // Save saves into the string_k_v db table
 func (s *Storage) save(key, value string) error {
-	if _, err := s.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
-		return storageErrors.ErrAlreadyExists
-	}
-
-	_, err := s.db.Exec(
+	row := s.db.QueryRow(
 		query.InsertString,
 		key, value, sql.Named("created_at", time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
 	)
+
+	err := row.Scan(&key, &value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return storageErrors.ErrAlreadyExists
+		}
 		return err
 	}
 
