@@ -3,6 +3,9 @@ package minifier
 import (
 	"crypto/md5"
 	"encoding/base64"
+	"errors"
+
+	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
 // Service is the implementation of [http.Service]
@@ -33,7 +36,7 @@ func (s *Service) Ping() error {
 	return s.storage.Ping()
 }
 
-// MinifyURL takes any string encodes it and returns the minified URL or an error
+// MinifyURL takes any string, encodes it and returns the minified URL or an error. If the original URL is minified already MinifyURL returns both non empty minifiedURL and [ErrMinifiedAlready] error
 //
 // TODO: add tests
 func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
@@ -41,12 +44,16 @@ func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
 
 	err = s.storage.Save(minifiedID, url)
 	if err != nil {
-		return "", err
+		if !errors.Is(err, storageErrors.ErrAlreadyExists) {
+			_ = minifiedID
+			return "", err
+		}
+		err = ErrMinifiedAlready
 	}
 
 	minifiedURL = s.Config.BaseURL().String() + "/" + minifiedID
 
-	return minifiedURL, nil
+	return minifiedURL, err
 }
 
 // UnMinifyURL takes an id of the minified URL and returns the stored original URL or an error

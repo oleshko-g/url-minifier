@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -189,15 +190,21 @@ func (s *Server) minifyURLHandler() http.HandlerFunc {
 		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
 		minifiedURL, err := s.Service.MinifyURL(url.String())
+		statusCode := http.StatusCreated
 		if err != nil {
-			responseWithError(res, err, http.StatusInternalServerError)
-			s.logger.Error(err.Error())
-			return
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(res, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
 		}
+
 		s.logger.Debug(fmt.Sprintf("minifiedURL: %s", minifiedURL))
+
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(statusCode)
 		res.Write([]byte(minifiedURL))
 	}
 }
@@ -252,10 +259,14 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 
 		// handle request
 		minifiedURL, err := s.Service.MinifyURL(reqBody.URL)
+		statusCode := http.StatusCreated
 		if err != nil {
-			responseWithError(res, err, http.StatusInternalServerError)
-			s.logger.Error(err.Error())
-			return
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(res, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
 		}
 
 		// encode response
@@ -270,7 +281,7 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 		}
 		res.Header().Set("Content-Type", "application/json")
 		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(statusCode)
 		res.Write([]byte(jsonData))
 	}
 }

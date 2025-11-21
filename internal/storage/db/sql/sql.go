@@ -31,11 +31,9 @@ func (s *Storage) Save(key, value string) (err error) {
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
 			slog.Warn(fmt.Sprintf("key %s already exists", key))
-			return nil
 		}
-		return err
 	}
-	return
+	return err
 }
 
 // Save saves into the string_k_v db table
