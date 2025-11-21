@@ -19,6 +19,7 @@ type Service struct {
 //go:generate moq -pkg file -out ../../mock/storage/storage.go . Storager
 type Storager interface {
 	Save(key, value string) error
+	SaveList(values []map[string]string) error
 	Retrieve(key string) (value string, err error)
 	Ping() error
 }
@@ -67,4 +68,13 @@ func (s *Service) UnMinifyURL(id string) (url string, err error) {
 func encode(data []byte, maxLen int) string {
 	checksum := md5.Sum(data)
 	return base64.RawURLEncoding.EncodeToString(checksum[:maxLen])
+}
+
+// MinifyURLs takes a slice of URLs coupled with their correlation ids an return the slice of minified URLs coupled with correlation ids or the first error occurred
+//
+// TODO: add tests
+func (s *Service) MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error) {
+	_, _, _ = urls, minifiedURLs, err
+	// TODL: write the implementation
+	return nil, nil
 }

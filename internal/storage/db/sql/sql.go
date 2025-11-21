@@ -74,6 +74,15 @@ func (s *Storage) retrieve(key string) (value string, err error) {
 	return value, nil
 }
 
+// SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
+//
+// TODO: add tests
+func (s *Storage) SaveList(values []map[string]string) error {
+	_ = values
+	// TODL: write the implementation
+	return nil
+}
+
 // New configures and open a new connection to the db and returns a [Storage] or an error
 func New(c *db.Config) (s *Storage, err error) {
 	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())

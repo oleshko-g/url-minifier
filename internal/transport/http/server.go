@@ -28,6 +28,7 @@ type Server struct {
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
 type Service interface {
 	MinifyURL(url string) (minifiedURL string, err error)
+	MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
 	Ping() error
 }
@@ -65,6 +66,10 @@ func NewServer(s Service, cp *Config) *Server {
 		srv.withLoggingMiddleware(
 			srv.withEncodingMiddleware(
 				srv.minifyURLJSONHandler())))
+	r.Post("/api/shorten/batch",
+		srv.withLoggingMiddleware(
+			srv.withEncodingMiddleware(nil)))
+
 	srv.server.Handler = r
 
 	srv.logger = slog.New(slog.Default().Handler())
@@ -285,6 +290,8 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 		res.Write([]byte(jsonData))
 	}
 }
+
+// func (s *Server)
 
 func responseWithError(res http.ResponseWriter, err error, statusCode int) {
 	http.Error(res, err.Error(), statusCode)

@@ -33,6 +33,15 @@ func (s *strRecords) Save(key, value string) error {
 	return nil
 }
 
+// SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
+//
+// TODO: add tests
+func (s *strRecords) SaveList(values []map[string]string) error {
+	_ = values
+	// TODL: write the implementation
+	return nil
+}
+
 func (s *strRecords) Retrieve(key string) (value string, err error) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()

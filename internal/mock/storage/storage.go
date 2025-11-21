@@ -27,6 +27,9 @@ var _ minifier.Storager = &StoragerMock{}
 //			SaveFunc: func(key string, value string) error {
 //				panic("mock out the Save method")
 //			},
+//			SaveListFunc: func(values []map[string]string) error {
+//				panic("mock out the SaveList method")
+//			},
 //		}
 //
 //		// use mockedStorager in code that requires minifier.Storager
@@ -42,6 +45,9 @@ type StoragerMock struct {
 
 	// SaveFunc mocks the Save method.
 	SaveFunc func(key string, value string) error
+
+	// SaveListFunc mocks the SaveList method.
+	SaveListFunc func(values []map[string]string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -60,10 +66,16 @@ type StoragerMock struct {
 			// Value is the value argument value.
 			Value string
 		}
+		// SaveList holds details about calls to the SaveList method.
+		SaveList []struct {
+			// Values is the values argument value.
+			Values []map[string]string
+		}
 	}
 	lockPing     sync.RWMutex
 	lockRetrieve sync.RWMutex
 	lockSave     sync.RWMutex
+	lockSaveList sync.RWMutex
 }
 
 // Ping calls PingFunc.
@@ -158,5 +170,37 @@ func (mock *StoragerMock) SaveCalls() []struct {
 	mock.lockSave.RLock()
 	calls = mock.calls.Save
 	mock.lockSave.RUnlock()
+	return calls
+}
+
+// SaveList calls SaveListFunc.
+func (mock *StoragerMock) SaveList(values []map[string]string) error {
+	if mock.SaveListFunc == nil {
+		panic("StoragerMock.SaveListFunc: method is nil but Storager.SaveList was just called")
+	}
+	callInfo := struct {
+		Values []map[string]string
+	}{
+		Values: values,
+	}
+	mock.lockSaveList.Lock()
+	mock.calls.SaveList = append(mock.calls.SaveList, callInfo)
+	mock.lockSaveList.Unlock()
+	return mock.SaveListFunc(values)
+}
+
+// SaveListCalls gets all the calls that were made to SaveList.
+// Check the length with:
+//
+//	len(mockedStorager.SaveListCalls())
+func (mock *StoragerMock) SaveListCalls() []struct {
+	Values []map[string]string
+} {
+	var calls []struct {
+		Values []map[string]string
+	}
+	mock.lockSaveList.RLock()
+	calls = mock.calls.SaveList
+	mock.lockSaveList.RUnlock()
 	return calls
 }

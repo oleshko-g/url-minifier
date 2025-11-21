@@ -79,6 +79,15 @@ func (f *File) save(key, value string) (err error) {
 	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
 }
 
+// SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
+//
+// TODO: add tests
+func (f *File) SaveList(values []map[string]string) error {
+	_ = values
+	// TODL: write the implementation
+	return nil
+}
+
 // Retrieve returns a value stored in the [File] by a key or an [ErrNotFound]
 //
 // TODO: add tests
