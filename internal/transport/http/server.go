@@ -68,7 +68,8 @@ func NewServer(s Service, cp *Config) *Server {
 				srv.minifyURLJSONHandler())))
 	r.Post("/api/shorten/batch",
 		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(nil)))
+			srv.withEncodingMiddleware(
+				srv.minifyURLsHandler())))
 
 	srv.server.Handler = r
 
@@ -309,4 +310,67 @@ func validateContentType(mediaType string, headers http.Header) error {
 	}
 
 	return nil
+}
+
+func (s *Server) minifyURLsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		var req minifyURLsRequest
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			responseWithError(w, err, http.StatusBadRequest)
+			return
+		}
+
+		var originalURLs []map[string]string
+		for _, v := range req {
+			originalURLs = append(originalURLs, v.toMap())
+		}
+
+		minifiedURLs, err := s.MinifyURLs(originalURLs)
+		if err != nil {
+			responseWithError(w, err, http.StatusBadRequest)
+			return
+		}
+
+		var resBody minifyURLsResponse
+		for _, v := range minifiedURLs {
+			var mURL minifyURLsResponseData
+			mURL.fromMap(v)
+			resBody = append(resBody, mURL)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err = json.NewEncoder(w).Encode(resBody); err != nil {
+			s.logger.Error(err.Error())
+		}
+	}
+}
+
+type (
+	minifyURLsRequest  []minifyURLsRequestData
+	minifyURLsResponse []minifyURLsResponseData
+)
+
+type minifyURLsRequestData struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+func (m minifyURLsRequestData) toMap() map[string]string {
+	return map[string]string{m.CorrelationID: m.OriginalURL}
+}
+
+func (m *minifyURLsResponseData) fromMap(ma map[string]string) {
+	for i, v := range ma {
+		m.CorrelationID = i
+		m.ShortURL = v
+	}
+}
+
+type minifyURLsResponseData struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }
