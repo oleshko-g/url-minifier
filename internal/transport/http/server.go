@@ -330,9 +330,14 @@ func (s *Server) minifyURLsHandler() http.HandlerFunc {
 		}
 
 		minifiedURLs, err := s.MinifyURLs(originalURLs)
+		statusCode := http.StatusCreated
 		if err != nil {
-			responseWithError(w, err, http.StatusBadRequest)
-			return
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(w, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
 		}
 
 		var resBody minifyURLsResponse
@@ -342,7 +347,7 @@ func (s *Server) minifyURLsHandler() http.HandlerFunc {
 			resBody = append(resBody, mURL)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 		if err = json.NewEncoder(w).Encode(resBody); err != nil {
 			s.logger.Error(err.Error())
 		}

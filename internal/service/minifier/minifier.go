@@ -73,8 +73,22 @@ func encode(data []byte, maxLen int) string {
 // MinifyURLs takes a slice of URLs coupled with their correlation ids an return the slice of minified URLs coupled with correlation ids or the first error occurred
 //
 // TODO: add tests
+// TODO: rewrite to use storage.SaveList
 func (s *Service) MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error) {
-	_, _, _ = urls, minifiedURLs, err
-	// TODL: write the implementation
-	return nil, nil
+	minifiedURL := make(map[string]string, 1)
+	for _, url := range urls {
+		for correlationID, originalURL := range url {
+			minifiedURL[correlationID], err = s.MinifyURL(originalURL)
+		}
+
+		if err != nil {
+			if !errors.Is(err, ErrMinifiedAlready) {
+				_, _ = minifiedURL, minifiedURL
+				return nil, err
+			}
+			// keep  err == [ErrMinifiedAlready] untill the end or encounterig a real error
+		}
+		minifiedURLs = append(minifiedURLs, minifiedURL)
+	}
+	return minifiedURLs, err
 }
