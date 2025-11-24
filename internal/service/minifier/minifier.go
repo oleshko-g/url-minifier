@@ -46,7 +46,6 @@ func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
 	err = s.storage.Save(minifiedID, url)
 	if err != nil {
 		if !errors.Is(err, storageErrors.ErrAlreadyExists) {
-			_ = minifiedID
 			return "", err
 		}
 		err = ErrMinifiedAlready
@@ -75,15 +74,14 @@ func encode(data []byte, maxLen int) string {
 // TODO: add tests
 // TODO: rewrite to use storage.SaveList
 func (s *Service) MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error) {
-	minifiedURL := make(map[string]string, 1)
 	for _, url := range urls {
+		minifiedURL := make(map[string]string, 1)
 		for correlationID, originalURL := range url {
 			minifiedURL[correlationID], err = s.MinifyURL(originalURL)
 		}
 
 		if err != nil {
 			if !errors.Is(err, ErrMinifiedAlready) {
-				_, _ = minifiedURL, minifiedURL
 				return nil, err
 			}
 			// keep  err == [ErrMinifiedAlready] untill the end or encounterig a real error
