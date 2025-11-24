@@ -10,4 +10,6 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrAlreadyExists is the error return when a record already exists
 	ErrAlreadyExists = errors.New("already exists")
+	// ErrUnsupportedDataSource is the error return when data source is not supported by the storage implementation
+	ErrUnsupportedDataSource = errors.New("unsupported data source")
 )

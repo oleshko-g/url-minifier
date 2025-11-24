@@ -87,32 +87,56 @@ func parseCoding(s string) (parsedCoding, error) {
 	}
 
 	// parse quality value
-	if strings.ToLower(after) == "nan" ||
-		strings.ToLower(after) == "inf" ||
-		strings.ToLower(after) == "infinity" {
-		defer func() { _ = pe }()
-		return parsedCoding{},
-			fmt.Errorf("quality value %s of %s coding doesn't satisfy '0.0 <= quality value <= 1.0'", after, pe.coding)
-	}
-	parsedFloat, err := strconv.ParseFloat(after, 32)
+	parsedFloat, err := parseQualityValue(after)
 	if err != nil {
-		defer func() { _, _ = pe, parsedFloat }()
-		return parsedCoding{},
-			errors.Join(errors.New("failed to parse quality value '%s' of %s coding"), err)
+		defer func() { _ = pe }()
+		switch err {
+		case errQualityValueOutOfRange:
+			err = fmt.Errorf("%w. quality value %s of %s coding doesn't satisfy '0.0 <= quality value <= 1.0'", err, after, pe.coding)
+		case errQualityValueTooLong:
+			err = fmt.Errorf("%w. quality value %s of %s coding has more then 3 digits after the point", err, after, pe.coding)
+		case errQualityValueParseFloat:
+			err = fmt.Errorf("%w. failed to parse quality value '%s' of %s coding", err, after, pe.coding)
+		}
+		return parsedCoding{}, err
 	}
-	if parsedFloat < 0.0 && parsedFloat < 1.0 {
-		defer func() { _, _ = pe, parsedFloat }()
-		return parsedCoding{},
-			fmt.Errorf("quality value %s of %s coding doesn't satisfy '0.0 <= quality value <= 1.0'", after, pe.coding)
-	}
-
-	// TODO: add the "up to 3 decimal digits" check
-
 	pe.qualityValue = qualityValue(parsedFloat)
 	return pe, nil
 }
 
 var errEmptyCoding = errors.New("empty coding value")
+
+// parseQualityValue validate quality value and can return:
+//   - [err]
+func parseQualityValue(s string) (float64, error) {
+	// parse quality value
+	if strings.ToLower(s) == "nan" ||
+		strings.ToLower(s) == "inf" ||
+		strings.ToLower(s) == "infinity" {
+		return 0.0, errQualityValueOutOfRange
+	}
+
+	if len(s) > 5 {
+		return 0.0, errQualityValueTooLong
+	}
+
+	parsedFloat, err := strconv.ParseFloat(s, 32)
+	if err != nil {
+		defer func() { _ = parsedFloat }()
+		return 0.0, errQualityValueParseFloat
+	}
+	if parsedFloat < 0.0 && parsedFloat < 1.0 {
+		defer func() { _ = parsedFloat }()
+		return 0.0, errQualityValueOutOfRange
+	}
+	return parsedFloat, nil
+}
+
+var (
+	errQualityValueOutOfRange = errors.New("quality value is out of the allowed range")
+	errQualityValueTooLong    = errors.New("quality value is too long")
+	errQualityValueParseFloat = errors.New("quality value couldn't be parsed to float ")
+)
 
 // parsedCoding represents a valid HTTP coding value used in Content-Encoding or Accept-Encoding HTTP header fields
 type parsedCoding struct {

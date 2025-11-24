@@ -2,9 +2,15 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 )
+
+// errParsingAdress indicates an error while parsing an address URL for an instance of http server
+//
+// [url-minifier]: https://github.com/oleshko-g/url-minifier
+var errParsingAdress = errors.New("error parsing address")
 
 // Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
@@ -52,10 +58,11 @@ func (a *address) Set(s string) error {
 	}
 
 	if a.host = url.Hostname(); url.Hostname() == "" {
-		return errors.New("error parsing address. empty host")
+		return fmt.Errorf("%w: %s", errParsingAdress, "empty scheme")
 	}
+
 	if a.port = url.Port(); url.Port() == "" {
-		return errors.New("error parsing address. empty port")
+		return fmt.Errorf("%w: %s", errParsingAdress, "empty port")
 	}
 
 	return nil

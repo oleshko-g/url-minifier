@@ -16,6 +16,11 @@ func NewStrRecords() *strRecords { // revive:disable-line:unexported-return prov
 	}
 }
 
+// Ping is no-op for [strRecords]
+func (s *strRecords) Ping() error {
+	return nil
+}
+
 type strRecords struct {
 	mux sync.RWMutex
 	m   map[string]string
@@ -25,6 +30,15 @@ func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.m[key] = value
+	return nil
+}
+
+// SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
+//
+// TODO: add tests
+func (s *strRecords) SaveList(values []map[string]string) error {
+	_ = values
+	// TODL: write the implementation
 	return nil
 }
 

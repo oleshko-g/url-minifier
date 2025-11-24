@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -27,7 +28,9 @@ type Server struct {
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
 type Service interface {
 	MinifyURL(url string) (minifiedURL string, err error)
+	MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
+	Ping() error
 }
 
 type logger interface {
@@ -49,6 +52,8 @@ func NewServer(s Service, cp *Config) *Server {
 
 	r := chi.NewRouter()
 	r.Use()
+	r.Get("/ping", srv.withLoggingMiddleware(
+		srv.pingHandler()))
 	r.Post("/",
 		srv.withLoggingMiddleware(
 			srv.withEncodingMiddleware(
@@ -61,6 +66,11 @@ func NewServer(s Service, cp *Config) *Server {
 		srv.withLoggingMiddleware(
 			srv.withEncodingMiddleware(
 				srv.minifyURLJSONHandler())))
+	r.Post("/api/shorten/batch",
+		srv.withLoggingMiddleware(
+			srv.withEncodingMiddleware(
+				srv.minifyURLsHandler())))
+
 	srv.server.Handler = r
 
 	srv.logger = slog.New(slog.Default().Handler())
@@ -147,6 +157,19 @@ func (s *Server) chooseCompression(parsedAcceptCodings map[coding]qualityValue) 
 // the client has forbidden every coding which the server can compress the response with
 var errNoCompressionChosen = errors.New("the client has forbidden every coding which the server can compress a response with")
 
+func (s *Server) pingHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+		err := s.Service.Ping()
+		if err != nil {
+			responseWithError(res, err, http.StatusInternalServerError)
+			s.logger.Error(err.Error())
+			return
+		}
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
 func (s *Server) minifyURLHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		err := validateContentType("text/plain", req.Header)
@@ -173,15 +196,21 @@ func (s *Server) minifyURLHandler() http.HandlerFunc {
 		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
 		minifiedURL, err := s.Service.MinifyURL(url.String())
+		statusCode := http.StatusCreated
 		if err != nil {
-			responseWithError(res, err, http.StatusInternalServerError)
-			s.logger.Error(err.Error())
-			return
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(res, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
 		}
+
 		s.logger.Debug(fmt.Sprintf("minifiedURL: %s", minifiedURL))
+
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(statusCode)
 		res.Write([]byte(minifiedURL))
 	}
 }
@@ -236,10 +265,14 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 
 		// handle request
 		minifiedURL, err := s.Service.MinifyURL(reqBody.URL)
+		statusCode := http.StatusCreated
 		if err != nil {
-			responseWithError(res, err, http.StatusInternalServerError)
-			s.logger.Error(err.Error())
-			return
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(res, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
 		}
 
 		// encode response
@@ -254,10 +287,12 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 		}
 		res.Header().Set("Content-Type", "application/json")
 		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(statusCode)
 		res.Write([]byte(jsonData))
 	}
 }
+
+// func (s *Server)
 
 func responseWithError(res http.ResponseWriter, err error, statusCode int) {
 	http.Error(res, err.Error(), statusCode)
@@ -275,4 +310,72 @@ func validateContentType(mediaType string, headers http.Header) error {
 	}
 
 	return nil
+}
+
+func (s *Server) minifyURLsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		var req minifyURLsRequest
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			responseWithError(w, err, http.StatusBadRequest)
+			return
+		}
+
+		var originalURLs []map[string]string
+		for _, v := range req {
+			originalURLs = append(originalURLs, v.toMap())
+		}
+
+		minifiedURLs, err := s.MinifyURLs(originalURLs)
+		statusCode := http.StatusCreated
+		if err != nil {
+			if !errors.Is(err, minifier.ErrMinifiedAlready) {
+				responseWithError(w, err, http.StatusInternalServerError)
+				s.logger.Error(err.Error())
+				return
+			}
+			statusCode = http.StatusConflict
+		}
+
+		var resBody minifyURLsResponse
+		for _, v := range minifiedURLs {
+			var mURL minifyURLsResponseData
+			mURL.fromMap(v)
+			resBody = append(resBody, mURL)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		if err = json.NewEncoder(w).Encode(resBody); err != nil {
+			s.logger.Error(err.Error())
+		}
+	}
+}
+
+type (
+	minifyURLsRequest  []minifyURLsRequestData
+	minifyURLsResponse []minifyURLsResponseData
+)
+
+type minifyURLsRequestData struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+func (m minifyURLsRequestData) toMap() map[string]string {
+	return map[string]string{m.CorrelationID: m.OriginalURL}
+}
+
+func (m *minifyURLsResponseData) fromMap(ma map[string]string) {
+	for i, v := range ma {
+		m.CorrelationID = i
+		m.ShortURL = v
+	}
+}
+
+type minifyURLsResponseData struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }

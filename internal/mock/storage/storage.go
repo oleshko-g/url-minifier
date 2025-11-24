@@ -18,11 +18,17 @@ var _ minifier.Storager = &StoragerMock{}
 //
 //		// make and configure a mocked minifier.Storager
 //		mockedStorager := &StoragerMock{
+//			PingFunc: func() error {
+//				panic("mock out the Ping method")
+//			},
 //			RetrieveFunc: func(key string) (string, error) {
 //				panic("mock out the Retrieve method")
 //			},
 //			SaveFunc: func(key string, value string) error {
 //				panic("mock out the Save method")
+//			},
+//			SaveListFunc: func(values []map[string]string) error {
+//				panic("mock out the SaveList method")
 //			},
 //		}
 //
@@ -31,14 +37,23 @@ var _ minifier.Storager = &StoragerMock{}
 //
 //	}
 type StoragerMock struct {
+	// PingFunc mocks the Ping method.
+	PingFunc func() error
+
 	// RetrieveFunc mocks the Retrieve method.
 	RetrieveFunc func(key string) (string, error)
 
 	// SaveFunc mocks the Save method.
 	SaveFunc func(key string, value string) error
 
+	// SaveListFunc mocks the SaveList method.
+	SaveListFunc func(values []map[string]string) error
+
 	// calls tracks calls to the methods.
 	calls struct {
+		// Ping holds details about calls to the Ping method.
+		Ping []struct {
+		}
 		// Retrieve holds details about calls to the Retrieve method.
 		Retrieve []struct {
 			// Key is the key argument value.
@@ -51,9 +66,43 @@ type StoragerMock struct {
 			// Value is the value argument value.
 			Value string
 		}
+		// SaveList holds details about calls to the SaveList method.
+		SaveList []struct {
+			// Values is the values argument value.
+			Values []map[string]string
+		}
 	}
+	lockPing     sync.RWMutex
 	lockRetrieve sync.RWMutex
 	lockSave     sync.RWMutex
+	lockSaveList sync.RWMutex
+}
+
+// Ping calls PingFunc.
+func (mock *StoragerMock) Ping() error {
+	if mock.PingFunc == nil {
+		panic("StoragerMock.PingFunc: method is nil but Storager.Ping was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockPing.Lock()
+	mock.calls.Ping = append(mock.calls.Ping, callInfo)
+	mock.lockPing.Unlock()
+	return mock.PingFunc()
+}
+
+// PingCalls gets all the calls that were made to Ping.
+// Check the length with:
+//
+//	len(mockedStorager.PingCalls())
+func (mock *StoragerMock) PingCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockPing.RLock()
+	calls = mock.calls.Ping
+	mock.lockPing.RUnlock()
+	return calls
 }
 
 // Retrieve calls RetrieveFunc.
@@ -121,5 +170,37 @@ func (mock *StoragerMock) SaveCalls() []struct {
 	mock.lockSave.RLock()
 	calls = mock.calls.Save
 	mock.lockSave.RUnlock()
+	return calls
+}
+
+// SaveList calls SaveListFunc.
+func (mock *StoragerMock) SaveList(values []map[string]string) error {
+	if mock.SaveListFunc == nil {
+		panic("StoragerMock.SaveListFunc: method is nil but Storager.SaveList was just called")
+	}
+	callInfo := struct {
+		Values []map[string]string
+	}{
+		Values: values,
+	}
+	mock.lockSaveList.Lock()
+	mock.calls.SaveList = append(mock.calls.SaveList, callInfo)
+	mock.lockSaveList.Unlock()
+	return mock.SaveListFunc(values)
+}
+
+// SaveListCalls gets all the calls that were made to SaveList.
+// Check the length with:
+//
+//	len(mockedStorager.SaveListCalls())
+func (mock *StoragerMock) SaveListCalls() []struct {
+	Values []map[string]string
+} {
+	var calls []struct {
+		Values []map[string]string
+	}
+	mock.lockSaveList.RLock()
+	calls = mock.calls.SaveList
+	mock.lockSaveList.RUnlock()
 	return calls
 }
