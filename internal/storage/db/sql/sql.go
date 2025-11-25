@@ -26,6 +26,8 @@ func (s *Storage) Ping() error {
 }
 
 // Save inserts value under key into the underlying db
+//
+// TODO: add tests
 func (s *Storage) Save(key, value string) (err error) {
 	err = s.save(key, value)
 	if err != nil {

@@ -30,6 +30,15 @@ func Test_parseCoding(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "quality value 0.900",
+			s:    "*;q=0.900",
+			want: parsedCoding{
+				coding:       "*",
+				qualityValue: 0.9,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,7 +52,6 @@ func Test_parseCoding(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("parseCoding() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
 			if tt.want != got {
 				t.Errorf("parseCoding() = %v, want %v", got, tt.want)
 			}
