@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// TODO: add auth middleware
+
 func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		parsedConentCodings, err := parseContentEncoding(req.Header)

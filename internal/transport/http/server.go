@@ -46,7 +46,6 @@ func NewServer(s Service, cp *Config) *Server {
 		server:  &http.Server{},
 		Config:  cp,
 	}
-
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
@@ -70,6 +69,11 @@ func NewServer(s Service, cp *Config) *Server {
 		srv.withLoggingMiddleware(
 			srv.withEncodingMiddleware(
 				srv.minifyURLsHandler())))
+	r.Get("/api/user/urls",
+		srv.withLoggingMiddleware(
+			srv.withEncodingMiddleware(
+				// TODO: wrap in auth middleware
+				srv.userURLsHandler())))
 
 	srv.server.Handler = r
 
@@ -378,4 +382,10 @@ func (m *minifyURLsResponseData) fromMap(ma map[string]string) {
 type minifyURLsResponseData struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+
+func (s *Server) userURLsHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusNotImplemented)
+	}
 }
