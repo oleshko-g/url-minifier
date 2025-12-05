@@ -128,15 +128,15 @@ func (cw *compressingResponseWriter) write(dataToCompress []byte) (n int, err er
 	return 0, errors.New("compressor is nil")
 }
 
-func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
+func (s *Server) withLoggingMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 
 		lw := loggingResponseWriter{
 			ResponseWriter: w,
 		}
 
-		h(&lw, req)
+		h.ServeHTTP(&lw, req)
 
 		s.logger.Info("Request:",
 			"URI", req.RequestURI,
@@ -148,7 +148,7 @@ func (s *Server) withLoggingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			"Status Code", lw.statusCode,
 			"Content size, bytes", lw.contentLength,
 		)
-	}
+	})
 }
 
 type loggingResponseWriter struct {

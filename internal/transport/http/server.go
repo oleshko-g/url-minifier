@@ -50,30 +50,24 @@ func NewServer(s Service, cp *Config) *Server {
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
 	r := chi.NewRouter()
-	r.Use()
-	r.Get("/ping", srv.withLoggingMiddleware(
-		srv.pingHandler()))
+	r.Use(srv.withLoggingMiddleware)
+	r.Get("/ping", srv.pingHandler())
 	r.Post("/",
-		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				srv.minifyURLHandler())))
+		srv.withEncodingMiddleware(
+			srv.minifyURLHandler()))
 	r.Get("/{id}",
-		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				srv.unMinifyURLHandler())))
+		srv.withEncodingMiddleware(
+			srv.unMinifyURLHandler()))
 	r.Post("/api/shorten",
-		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				srv.minifyURLJSONHandler())))
+		srv.withEncodingMiddleware(
+			srv.minifyURLJSONHandler()))
 	r.Post("/api/shorten/batch",
-		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				srv.minifyURLsHandler())))
+		srv.withEncodingMiddleware(
+			srv.minifyURLsHandler()))
 	r.Get("/api/user/urls",
-		srv.withLoggingMiddleware(
-			srv.withEncodingMiddleware(
-				// TODO: wrap in auth middleware
-				srv.userURLsHandler())))
+		srv.withEncodingMiddleware(
+			// TODO: wrap in auth middleware
+			srv.userURLsHandler()))
 
 	srv.server.Handler = r
 
@@ -386,6 +380,7 @@ type minifyURLsResponseData struct {
 
 func (s *Server) userURLsHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		_, _ = res, req
 		res.WriteHeader(http.StatusNotImplemented)
 	}
 }
