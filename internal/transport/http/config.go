@@ -17,6 +17,16 @@ type Config struct {
 	address       address
 	canDecompress map[coding]struct{}
 	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
+	secretKey     secret
+}
+
+// Address returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) Address() *address { // revive:disable-line:unexported-return provides the interface to the caller
+	return &c.address
+}
+
+func (c *Config) SecretAuthKey() *secret {
+	return &c.secretKey
 }
 
 type codings []coding
@@ -31,11 +41,6 @@ func (c codings) String() string {
 		s += string(coding)
 	}
 	return s
-}
-
-// Address returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) Address() *address { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.address
 }
 
 type address struct {
@@ -65,5 +70,16 @@ func (a *address) Set(s string) error {
 		return fmt.Errorf("%w: %s", errParsingAdress, "empty port")
 	}
 
+	return nil
+}
+
+type secret string
+
+func (sec secret) String() string {
+	return ""
+}
+
+func (sec *secret) Set(s string) error {
+	*sec = secret(s)
 	return nil
 }
