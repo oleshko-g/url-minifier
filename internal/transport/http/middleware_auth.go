@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -14,96 +15,119 @@ import (
 func (s *Server) withAuthorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var (
-			authToken   *http.Cookie
-			userIDKey   string = "userID"
+			userID      = "userID"
 			userIDValue string
 		)
 
-		switch err := authorized(userIDKey, req); err != nil {
+		switch userIDValue, err := s.authenticate(req); err != nil {
 		case errors.Is(err, errInvalidCookie):
 			responseWithError(w, err, http.StatusBadRequest)
 			return
-		case errors.Is(err, http.ErrNoCookie), errors.Is(err, errInvalidAuthToken):
+
+		case errors.Is(err, http.ErrNoCookie),
+			errors.Is(err, errInvalidAuthToken):
 			userIDValue = uuid.New().String()
-			if authToken, err = s.newSignedCookie(userIDKey, userIDValue); err != nil {
+			authToken, err := s.newAuthToken(userIDValue)
+			if err != nil {
 				responseWithError(w, err, http.StatusInternalServerError)
 				return
 			}
-			http.SetCookie(w, authToken)
+
+			http.SetCookie(w, &http.Cookie{Name: userID, Value: authToken})
 		}
 
 		ctx := req.Context()
-		ctx = context.WithValue(ctx, userIDKey, userIDValue)
+		ctx = context.WithValue(ctx, contextKey(userID), userIDValue)
 		req = req.WithContext(ctx)
 
 		h.ServeHTTP(w, req)
 	})
 }
 
-func authorized(authCookieName string, req *http.Request) error {
-	c, err := req.Cookie(authCookieName)
+// authenticate extracts authCookie from the [http.Request], validates cookie, verifies its value
+func (s *Server) authenticate(req *http.Request) (string, error) {
+	authCookieName := "userID"
+	authCookie, err := req.Cookie(authCookieName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err = c.Valid(); err != nil {
-		return errors.Join(errInvalidCookie, err)
+	if err = authCookie.Valid(); err != nil {
+		return "", errors.Join(errInvalidCookie, err)
 	}
 
-	if err = validAuthToken(c.Value); err != nil {
-		return err
-	}
-
-	return nil
-}
-func validAuthToken(value string) error {
-	var authToken string
-	authToken, err := parseAuthToken(value)
+	cutCookie, err := parseSignedCookie(authCookie.Value)
 	if err != nil {
-		return errors.Join(errInvalidAuthToken, errors.New("parsing auth token"))
+		return "", errors.Join(errInvalidAuthToken, errors.New("parsing auth token"))
 	}
 
-	if !validateSignature(authToken) {
-		return errors.Join(errInvalidAuthToken, errors.New("invalid signature"))
+	if err = s.verify(cutCookie[0], authCookie.Value); err != nil {
+		return "", err
 	}
-	return nil
-}
 
-// TODO: decode hex, validateSignature
-func parseAuthToken(cookieValue string) (string, error) {
 	return "", nil
 }
 
-// TODO: re-sign, compare
-func validateSignature(signedString string) bool {
-	return true
+func (s *Server) newAuthToken(uid string) (string, error) {
+	signature, err := sign(uid, string(s.secretKey))
+	if err != nil {
+		return "", nil
+	}
+	sb := append([]byte(uid+separator), signature...)
+
+	return hex.EncodeToString(sb), nil
 }
 
-func (s *Server) newSignedCookie(userIDKey, userID string) (*http.Cookie, error) {
-	signature, err := sign(userID, string(s.secretKey))
+type contextKey string
+
+func (s *Server) verify(cutCookie, signedCookieValue string) error {
+
+	signedCutCookieValue, err := s.newAuthToken(cutCookie)
+	if err != nil {
+		return errors.Join(errInvalidAuthToken, errors.New("invalid signature"))
+	}
+
+	if signedCutCookieValue != signedCookieValue {
+		return errInvalidAuthToken
+	}
+
+	return nil
+}
+
+// parseSignedCookie decodes and cuts cookie into 2 parts. The first is the value, the second part is the signature of the value.
+func parseSignedCookie(cookieValue string) (cookieParts []string, err error) {
+	sb, err := hex.DecodeString(cookieValue)
 	if err != nil {
 		return nil, err
 	}
 
-	return &http.Cookie{
-		Name:  userIDKey,
-		Value: signature,
-	}, nil
-}
+	s := string(sb)
+	cookieParts = strings.Split(s, separator)
 
-// TODO: sign
-func sign(s, secretKey string) (string, error) {
-	h := hmac.New(sha256.New, []byte(secretKey))
-	if _, err := h.Write([]byte(s)); err != nil {
-		return "", err
+	if len(cookieParts) != 2 {
+		return nil, errInvalidAuthToken
 	}
 
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return cookieParts, nil
 }
+
+func sign(s, secretKey string) ([]byte, error) {
+	var (
+		sb   = []byte(s)
+		keyb = []byte(secretKey)
+	)
+
+	h := hmac.New(sha256.New, keyb)
+	if _, err := h.Write(sb); err != nil {
+		return nil, err
+	}
+
+	return h.Sum(nil), nil
+}
+
+const separator = "."
 
 var (
 	errInvalidCookie    error = errors.New("error invalid cookie")
-	errNoUserIDCookie         = errors.New("error no userID")
-	_                         = errNoUserIDCookie
-	errInvalidAuthToken       = errors.New("error invalid auth token")
+	errInvalidAuthToken       = errors.New("error parsing signed cookie value")
 )
