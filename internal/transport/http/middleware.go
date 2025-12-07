@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
+func (s *Server) withEncodingMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		parsedConentCodings, err := parseContentEncoding(req.Header)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -71,8 +71,8 @@ func (s *Server) withEncodingMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}()
 
-		h(&cw, req)
-	}
+		h.ServeHTTP(&cw, req)
+	})
 }
 
 type compressingResponseWriter struct {

@@ -51,23 +51,15 @@ func NewServer(s Service, cp *Config) *Server {
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
+	r.Route("/", func(r chi.Router) {
+		r.Use(srv.withEncodingMiddleware)
+		r.Post("/", srv.minifyURLHandler())
+		r.Get("/{id}", srv.unMinifyURLHandler())
+		r.Post("/api/shorten", srv.minifyURLJSONHandler())
+		r.Post("/api/shorten/batch", srv.minifyURLsHandler())
+		r.Get("/api/user/urls", srv.userURLsHandler())
+	})
 	r.Get("/ping", srv.pingHandler())
-	r.Post("/",
-		srv.withEncodingMiddleware(
-			srv.minifyURLHandler()))
-	r.Get("/{id}",
-		srv.withEncodingMiddleware(
-			srv.unMinifyURLHandler()))
-	r.Post("/api/shorten",
-		srv.withEncodingMiddleware(
-			srv.minifyURLJSONHandler()))
-	r.Post("/api/shorten/batch",
-		srv.withEncodingMiddleware(
-			srv.minifyURLsHandler()))
-	r.Get("/api/user/urls",
-		srv.withEncodingMiddleware(
-			// TODO: wrap in auth middleware
-			srv.userURLsHandler()))
 
 	srv.server.Handler = r
 
