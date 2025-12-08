@@ -53,11 +53,22 @@ func NewServer(s Service, cp *Config) *Server {
 	r.Use(srv.withLoggingMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Use(srv.withEncodingMiddleware)
+		r.Use(srv.withAuthorization)
+
 		r.Post("/", srv.minifyURLHandler())
-		r.Get("/{id}", srv.unMinifyURLHandler())
 		r.Post("/api/shorten", srv.minifyURLJSONHandler())
 		r.Post("/api/shorten/batch", srv.minifyURLsHandler())
-		r.Get("/api/user/urls", srv.userURLsHandler())
+	})
+	r.Route("/api/user/urls", func(r chi.Router) {
+		r.Use(srv.withEncodingMiddleware)
+		r.Use(srv.withAuthentification)
+
+		r.Get("/", srv.userURLsHandler())
+	})
+
+	r.Route("/{id}", func(r chi.Router) {
+		r.Use(srv.withEncodingMiddleware)
+		r.Get("/", srv.unMinifyURLHandler())
 	})
 	r.Get("/ping", srv.pingHandler())
 

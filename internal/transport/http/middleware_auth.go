@@ -17,9 +17,10 @@ func (s *Server) withAuthorization(h http.Handler) http.Handler {
 		var (
 			userID      = "userID"
 			userIDValue string
+			err         error
 		)
 
-		switch userIDValue, err := s.authenticate(req); err != nil {
+		switch userIDValue, err = s.authenticate(req); err != nil {
 		case errors.Is(err, errInvalidCookie):
 			responseWithError(w, err, http.StatusBadRequest)
 			return
@@ -34,6 +35,33 @@ func (s *Server) withAuthorization(h http.Handler) http.Handler {
 			}
 
 			http.SetCookie(w, &http.Cookie{Name: userID, Value: authToken})
+		}
+
+		ctx := req.Context()
+		ctx = context.WithValue(ctx, contextKey(userID), userIDValue)
+		req = req.WithContext(ctx)
+
+		h.ServeHTTP(w, req)
+	})
+}
+
+func (s *Server) withAuthentification(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		var (
+			userID      = "userID"
+			userIDValue string
+			err         error
+		)
+
+		switch userIDValue, err = s.authenticate(req); err != nil {
+		case errors.Is(err, errInvalidCookie):
+			responseWithError(w, err, http.StatusBadRequest)
+			return
+
+		case errors.Is(err, http.ErrNoCookie),
+			errors.Is(err, errInvalidAuthToken):
+			responseWithError(w, err, http.StatusUnauthorized)
+			return
 		}
 
 		ctx := req.Context()
@@ -65,7 +93,7 @@ func (s *Server) authenticate(req *http.Request) (string, error) {
 		return "", err
 	}
 
-	return "", nil
+	return cutCookie[0], nil
 }
 
 func (s *Server) newAuthToken(uid string) (string, error) {
@@ -81,7 +109,6 @@ func (s *Server) newAuthToken(uid string) (string, error) {
 type contextKey string
 
 func (s *Server) verify(cutCookie, signedCookieValue string) error {
-
 	signedCutCookieValue, err := s.newAuthToken(cutCookie)
 	if err != nil {
 		return errors.Join(errInvalidAuthToken, errors.New("invalid signature"))
