@@ -27,8 +27,8 @@ type Server struct {
 //
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
 type Service interface {
-	MinifyURL(url string) (minifiedURL string, err error)
-	MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error)
+	MinifyURL(userID string, url string) (minifiedURL string, err error)
+	MinifyURLs(userID string, urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
 	Ping() error
 }
@@ -55,9 +55,9 @@ func NewServer(s Service, cp *Config) *Server {
 		r.Use(srv.withEncodingMiddleware)
 		r.Use(srv.withAuthorization)
 
-		r.Post("/", srv.minifyURLHandler())
-		r.Post("/api/shorten", srv.minifyURLJSONHandler())
-		r.Post("/api/shorten/batch", srv.minifyURLsHandler())
+		r.Post("/", srv.authorized(srv.minifyURLHandler()))
+		r.Post("/api/shorten", srv.authorized(srv.minifyURLJSONHandler()))
+		r.Post("/api/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
 	})
 	r.Route("/api/user/urls", func(r chi.Router) {
 		r.Use(srv.withEncodingMiddleware)
@@ -171,9 +171,28 @@ func (s *Server) pingHandler() http.HandlerFunc {
 	}
 }
 
-func (s *Server) minifyURLHandler() http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		err := validateContentType("text/plain", req.Header)
+type handlerWithUserID func(userID string, res http.ResponseWriter, req *http.Request)
+
+func (s *Server) authorized(h handlerWithUserID) http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		var err error
+		ctx := req.Context()
+		uid, ok := userIDFromContext(ctx)
+		if !ok {
+			err = errors.New("no userID in the request")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
+			return
+		}
+		h(uid, res, req)
+	})
+}
+
+func (s *Server) minifyURLHandler() handlerWithUserID {
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
+		var err error
+
+		err = validateContentType("text/plain", req.Header)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
@@ -196,7 +215,7 @@ func (s *Server) minifyURLHandler() http.HandlerFunc {
 
 		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
-		minifiedURL, err := s.Service.MinifyURL(url.String())
+		minifiedURL, err := s.Service.MinifyURL(userID, url.String())
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
@@ -246,8 +265,8 @@ type minifyURLResponse struct {
 	Result string `json:"result"`
 }
 
-func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
+func (s *Server) minifyURLJSONHandler() handlerWithUserID {
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
 		if err := validateContentType("application/json", req.Header); err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
@@ -265,7 +284,7 @@ func (s *Server) minifyURLJSONHandler() http.HandlerFunc {
 		defer req.Body.Close()
 
 		// handle request
-		minifiedURL, err := s.Service.MinifyURL(reqBody.URL)
+		minifiedURL, err := s.Service.MinifyURL(userID, reqBody.URL)
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
@@ -313,8 +332,8 @@ func validateContentType(mediaType string, headers http.Header) error {
 	return nil
 }
 
-func (s *Server) minifyURLsHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (s *Server) minifyURLsHandler() handlerWithUserID {
+	return func(userID string, w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
 		var req minifyURLsRequest
@@ -330,7 +349,7 @@ func (s *Server) minifyURLsHandler() http.HandlerFunc {
 			originalURLs = append(originalURLs, v.toMap())
 		}
 
-		minifiedURLs, err := s.MinifyURLs(originalURLs)
+		minifiedURLs, err := s.MinifyURLs(userID, originalURLs)
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {

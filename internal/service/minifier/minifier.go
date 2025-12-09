@@ -40,7 +40,7 @@ func (s *Service) Ping() error {
 // MinifyURL takes any string, encodes it and returns the minified URL or an error. If the original URL is minified already MinifyURL returns both non empty minifiedURL and [ErrMinifiedAlready] error
 //
 // TODO: add tests
-func (s *Service) MinifyURL(url string) (minifiedURL string, err error) {
+func (s *Service) MinifyURL(userID, url string) (minifiedURL string, err error) {
 	minifiedID := encode([]byte(url), s.MaxLen)
 
 	err = s.storage.Save(minifiedID, url)
@@ -73,11 +73,11 @@ func encode(data []byte, maxLen int) string {
 //
 // TODO: add tests
 // TODO: rewrite to use storage.SaveList
-func (s *Service) MinifyURLs(urls []map[string]string) (minifiedURLs []map[string]string, err error) {
+func (s *Service) MinifyURLs(userID string, urls []map[string]string) (minifiedURLs []map[string]string, err error) {
 	for _, url := range urls {
 		minifiedURL := make(map[string]string, 1)
 		for correlationID, originalURL := range url {
-			minifiedURL[correlationID], err = s.MinifyURL(originalURL)
+			minifiedURL[correlationID], err = s.MinifyURL(userID, originalURL)
 		}
 
 		if err != nil {

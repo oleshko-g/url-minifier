@@ -18,10 +18,10 @@ var _ http.Service = &ServiceMock{}
 //
 //		// make and configure a mocked http.Service
 //		mockedService := &ServiceMock{
-//			MinifyURLFunc: func(url string) (string, error) {
+//			MinifyURLFunc: func(userID string, url string) (string, error) {
 //				panic("mock out the MinifyURL method")
 //			},
-//			MinifyURLsFunc: func(urls []map[string]string) ([]map[string]string, error) {
+//			MinifyURLsFunc: func(userID string, urls []map[string]string) ([]map[string]string, error) {
 //				panic("mock out the MinifyURLs method")
 //			},
 //			PingFunc: func() error {
@@ -38,10 +38,10 @@ var _ http.Service = &ServiceMock{}
 //	}
 type ServiceMock struct {
 	// MinifyURLFunc mocks the MinifyURL method.
-	MinifyURLFunc func(url string) (string, error)
+	MinifyURLFunc func(userID string, url string) (string, error)
 
 	// MinifyURLsFunc mocks the MinifyURLs method.
-	MinifyURLsFunc func(urls []map[string]string) ([]map[string]string, error)
+	MinifyURLsFunc func(userID string, urls []map[string]string) ([]map[string]string, error)
 
 	// PingFunc mocks the Ping method.
 	PingFunc func() error
@@ -53,11 +53,15 @@ type ServiceMock struct {
 	calls struct {
 		// MinifyURL holds details about calls to the MinifyURL method.
 		MinifyURL []struct {
+			// UserID is the userID argument value.
+			UserID string
 			// URL is the url argument value.
 			URL string
 		}
 		// MinifyURLs holds details about calls to the MinifyURLs method.
 		MinifyURLs []struct {
+			// UserID is the userID argument value.
+			UserID string
 			// Urls is the urls argument value.
 			Urls []map[string]string
 		}
@@ -77,19 +81,21 @@ type ServiceMock struct {
 }
 
 // MinifyURL calls MinifyURLFunc.
-func (mock *ServiceMock) MinifyURL(url string) (string, error) {
+func (mock *ServiceMock) MinifyURL(userID string, url string) (string, error) {
 	if mock.MinifyURLFunc == nil {
 		panic("ServiceMock.MinifyURLFunc: method is nil but Service.MinifyURL was just called")
 	}
 	callInfo := struct {
-		URL string
+		UserID string
+		URL    string
 	}{
-		URL: url,
+		UserID: userID,
+		URL:    url,
 	}
 	mock.lockMinifyURL.Lock()
 	mock.calls.MinifyURL = append(mock.calls.MinifyURL, callInfo)
 	mock.lockMinifyURL.Unlock()
-	return mock.MinifyURLFunc(url)
+	return mock.MinifyURLFunc(userID, url)
 }
 
 // MinifyURLCalls gets all the calls that were made to MinifyURL.
@@ -97,10 +103,12 @@ func (mock *ServiceMock) MinifyURL(url string) (string, error) {
 //
 //	len(mockedService.MinifyURLCalls())
 func (mock *ServiceMock) MinifyURLCalls() []struct {
-	URL string
+	UserID string
+	URL    string
 } {
 	var calls []struct {
-		URL string
+		UserID string
+		URL    string
 	}
 	mock.lockMinifyURL.RLock()
 	calls = mock.calls.MinifyURL
@@ -109,19 +117,21 @@ func (mock *ServiceMock) MinifyURLCalls() []struct {
 }
 
 // MinifyURLs calls MinifyURLsFunc.
-func (mock *ServiceMock) MinifyURLs(urls []map[string]string) ([]map[string]string, error) {
+func (mock *ServiceMock) MinifyURLs(userID string, urls []map[string]string) ([]map[string]string, error) {
 	if mock.MinifyURLsFunc == nil {
 		panic("ServiceMock.MinifyURLsFunc: method is nil but Service.MinifyURLs was just called")
 	}
 	callInfo := struct {
-		Urls []map[string]string
+		UserID string
+		Urls   []map[string]string
 	}{
-		Urls: urls,
+		UserID: userID,
+		Urls:   urls,
 	}
 	mock.lockMinifyURLs.Lock()
 	mock.calls.MinifyURLs = append(mock.calls.MinifyURLs, callInfo)
 	mock.lockMinifyURLs.Unlock()
-	return mock.MinifyURLsFunc(urls)
+	return mock.MinifyURLsFunc(userID, urls)
 }
 
 // MinifyURLsCalls gets all the calls that were made to MinifyURLs.
@@ -129,10 +139,12 @@ func (mock *ServiceMock) MinifyURLs(urls []map[string]string) ([]map[string]stri
 //
 //	len(mockedService.MinifyURLsCalls())
 func (mock *ServiceMock) MinifyURLsCalls() []struct {
-	Urls []map[string]string
+	UserID string
+	Urls   []map[string]string
 } {
 	var calls []struct {
-		Urls []map[string]string
+		UserID string
+		Urls   []map[string]string
 	}
 	mock.lockMinifyURLs.RLock()
 	calls = mock.calls.MinifyURLs

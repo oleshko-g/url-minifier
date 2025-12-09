@@ -70,7 +70,9 @@ func TestServer_minifyURLHandler(t *testing.T) {
 			req.Header.Set("Content-Type", "text/plain")
 
 			w := httptest.NewRecorder()
-			ta.Server.minifyURLHandler().ServeHTTP(w, req)
+			handler := ta.Server.minifyURLHandler()
+			authorizedHandler := ta.Server.authorized(handler)
+			authorizedHandler(w, req)
 			res := w.Result()
 
 			body, err := io.ReadAll(res.Body)
@@ -176,7 +178,11 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 
 			// make the request
 			w := httptest.NewRecorder()
-			ta.Server.minifyURLJSONHandler().ServeHTTP(w, req)
+
+			handler := ta.Server.minifyURLJSONHandler()
+			authorizedHandler := ta.Server.authorized(handler)
+			authorizedHandler(w, req)
+
 			res := w.Result()
 			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
