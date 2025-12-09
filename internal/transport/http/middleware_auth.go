@@ -15,7 +15,6 @@ import (
 func (s *Server) withAuthorization(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var (
-			userID      = "userID"
 			userIDValue string
 			err         error
 		)
@@ -34,11 +33,11 @@ func (s *Server) withAuthorization(h http.Handler) http.Handler {
 				return
 			}
 
-			http.SetCookie(w, &http.Cookie{Name: userID, Value: authToken})
+			http.SetCookie(w, &http.Cookie{Name: userID.String(), Value: authToken})
 		}
 
 		ctx := req.Context()
-		ctx = context.WithValue(ctx, contextKey(userID), userIDValue)
+		ctx = context.WithValue(ctx, userID, userIDValue)
 		req = req.WithContext(ctx)
 
 		h.ServeHTTP(w, req)
@@ -65,7 +64,7 @@ func (s *Server) withAuthentification(h http.Handler) http.Handler {
 		}
 
 		ctx := req.Context()
-		ctx = context.WithValue(ctx, contextKey(userID), userIDValue)
+		ctx = context.WithValue(ctx, userID, userIDValue)
 		req = req.WithContext(ctx)
 
 		h.ServeHTTP(w, req)
@@ -74,8 +73,7 @@ func (s *Server) withAuthentification(h http.Handler) http.Handler {
 
 // authenticate extracts authCookie from the [http.Request], validates cookie, verifies its value
 func (s *Server) authenticate(req *http.Request) (string, error) {
-	authCookieName := "userID"
-	authCookie, err := req.Cookie(authCookieName)
+	authCookie, err := req.Cookie(userID.String())
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +104,16 @@ func (s *Server) newAuthToken(uid string) (string, error) {
 	return hex.EncodeToString(sb), nil
 }
 
-type contextKey string
+type contextKey int
+
+const userID contextKey = 1
+
+func (c contextKey) String() string {
+	if c == 1 {
+		return "userID"
+	}
+	return ""
+}
 
 func (s *Server) verify(cutCookie, signedCookieValue string) error {
 	signedCutCookieValue, err := s.newAuthToken(cutCookie)
@@ -158,3 +165,8 @@ var (
 	errInvalidCookie    error = errors.New("error invalid cookie")
 	errInvalidAuthToken       = errors.New("error parsing signed cookie value")
 )
+
+func userIDFromContext(ctx context.Context) (string, bool) {
+	userID, ok := ctx.Value(userID).(string)
+	return userID, ok
+}
