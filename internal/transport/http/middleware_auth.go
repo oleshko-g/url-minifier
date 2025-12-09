@@ -53,7 +53,7 @@ func (s *Server) withAuthentification(h http.Handler) http.Handler {
 			err         error
 		)
 
-		switch userIDValue, err = s.authenticate(req); err != nil {
+		switch userIDValue, err = s.authenticate(req); {
 		case errors.Is(err, errInvalidCookie):
 			responseWithError(w, err, http.StatusBadRequest)
 			return
