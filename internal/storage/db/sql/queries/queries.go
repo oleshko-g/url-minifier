@@ -12,3 +12,8 @@ var InsertString string
 //
 //go:embed selectString.sql
 var SelectString string
+
+// SelectString is the SQL statement to select all string by user_id from a db
+//
+//go:embed selectUserStrings.sql
+var SelectUserStrings string
