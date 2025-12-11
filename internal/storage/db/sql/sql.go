@@ -2,6 +2,7 @@
 package sql
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -43,6 +44,38 @@ func (s *Storage) save(key, value string) error {
 	row := s.db.QueryRow(
 		query.InsertString,
 		key, value, sql.Named("created_at", time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
+	)
+
+	err := row.Scan(&key, &value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return storageErrors.ErrAlreadyExists
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) SaveUserString(ctx context.Context, userID, key, value string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	err := s.saveUserString(ctx, userID, key, value)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			slog.Warn(fmt.Sprintf("key %s already exists", key))
+		}
+	}
+	return nil
+}
+
+func (s *Storage) saveUserString(ctx context.Context, userID, key, value string) error {
+	row := s.db.QueryRow(
+		query.InsertUserStrings,
+		key, value, sql.Named("created_at",
+			time.Now().UTC()), sql.NullTime{}, sql.NullTime{}, userID,
 	)
 
 	err := row.Scan(&key, &value)
