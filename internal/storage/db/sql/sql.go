@@ -10,16 +10,40 @@ import (
 	"time"
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	query "github.com/oleshko-g/url-minifier/internal/storage/db/sql/queries"
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql/schema"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
+// New configures and open a new connection to the db and returns a [Storage] or an error
+func New(c *db.Config) (s *Storage, err error) {
+	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = schema.Up(c.DSN().DriverName, database); err != nil {
+		return
+	}
+
+	return &Storage{
+		db: database,
+	}, nil
+}
+
 // Storage represents an internal implementation of [sql.DB]
 type Storage struct {
 	db *sql.DB
 }
+
+var _ storage.Storager = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {
@@ -74,8 +98,8 @@ func (s *Storage) SaveUserString(ctx context.Context, userID, key, value string)
 func (s *Storage) saveUserString(ctx context.Context, userID, key, value string) error {
 	row := s.db.QueryRow(
 		query.InsertUserStrings,
-		key, value, sql.Named("created_at",
-			time.Now().UTC()), sql.NullTime{}, sql.NullTime{}, userID,
+		userID, key, value, sql.Named("created_at",
+			time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
 	)
 
 	err := row.Scan(&key, &value)
@@ -116,25 +140,4 @@ func (s *Storage) SaveList(values []map[string]string) error {
 	_ = values
 	// TODL: write the implementation
 	return nil
-}
-
-// New configures and open a new connection to the db and returns a [Storage] or an error
-func New(c *db.Config) (s *Storage, err error) {
-	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())
-	if err != nil {
-		return nil, err
-	}
-
-	err = database.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	if err = schema.Up(c.DSN().DriverName, database); err != nil {
-		return
-	}
-
-	return &Storage{
-		db: database,
-	}, nil
 }
