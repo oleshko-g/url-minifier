@@ -8,10 +8,10 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql"
 	"github.com/oleshko-g/url-minifier/internal/storage/file"
-	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
 )
 
@@ -30,7 +30,7 @@ type app struct {
 	fileConfig     file.Config
 	minifierConfig minifier.Config
 	httpConfig     http.Config
-	minifier.Storager
+	storage.Storager
 	*minifier.Service
 	*http.Server
 }
@@ -91,11 +91,15 @@ func (a *app) setup() (err error) {
 		a.Storager, err = sql.New(&a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
-		a.Storager, err = file.New(&a.fileConfig)
-		slog.Info("The storage is set to file.")
+		// FIXME: "cannot use file.New(&a.fileConfig) (value of type *file.File) as minifier.Storager value in assignment: *file.File does not implement minifier.Storager (missing method SaveUserStringCtx) (compiler InvalidIfaceAssign)"
+		// a.Storager, err = file.New(&a.fileConfig)
+		// slog.Info("The storage is set to file.")
+		// err = fmt.Errorf("file storage isn't fully implemented")
 	} else {
-		a.Storager = memory.NewStrRecords()
-		slog.Info("The storage is set to memory.")
+		// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
+		// a.Storager = memory.NewStrRecords()
+		// slog.Info("The storage is set to memory.")
+		// err = fmt.Errorf("memory storage isn't fully implemented")
 	}
 	if err != nil {
 		return err

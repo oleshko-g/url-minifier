@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,9 +28,12 @@ type Server struct {
 //
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
 type Service interface {
-	MinifyURL(userID string, url string) (minifiedURL string, err error)
-	MinifyURLs(userID string, urls []map[string]string) (minifiedURLs []map[string]string, err error)
+	MinifyURL(ctx context.Context, userID string, url string) (minifiedURL string, err error)
+
+	MinifyURLs(ctx context.Context, userID string,
+		urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
+	UserURLs(ctx context.Context, userID string) ([]minifier.URL, error)
 	Ping() error
 }
 
@@ -51,26 +55,20 @@ func NewServer(s Service, cp *Config) *Server {
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
+
+	r.Get("/ping", srv.pingHandler())
 	r.Route("/", func(r chi.Router) {
 		r.Use(srv.withEncodingMiddleware)
 		r.Use(srv.withAuthorization)
 
+		r.Get("/{id}", srv.unMinifyURLHandler())
 		r.Post("/", srv.authorized(srv.minifyURLHandler()))
-		r.Post("/api/shorten", srv.authorized(srv.minifyURLJSONHandler()))
-		r.Post("/api/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
+		r.Route("/api", func(r chi.Router) {
+			r.Post("/shorten", srv.authorized(srv.minifyURLJSONHandler()))
+			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
+			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
+		})
 	})
-	r.Route("/api/user/urls", func(r chi.Router) {
-		r.Use(srv.withEncodingMiddleware)
-		r.Use(srv.withAuthentification)
-
-		r.Get("/", srv.userURLsHandler())
-	})
-
-	r.Route("/{id}", func(r chi.Router) {
-		r.Use(srv.withEncodingMiddleware)
-		r.Get("/", srv.unMinifyURLHandler())
-	})
-	r.Get("/ping", srv.pingHandler())
 
 	srv.server.Handler = r
 
@@ -173,24 +171,17 @@ func (s *Server) pingHandler() http.HandlerFunc {
 
 type handlerWithUserID func(userID string, res http.ResponseWriter, req *http.Request)
 
-func (s *Server) authorized(h handlerWithUserID) http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		var err error
+func (s *Server) minifyURLHandler() handlerWithUserID {
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		uid, ok := userIDFromContext(ctx)
-		if !ok {
-			err = errors.New("no userID in the request")
+		var err error
+
+		if userID == "" {
+			err = errors.New("userID is empty")
 			responseWithError(res, err, http.StatusUnauthorized)
 			s.logger.Error(err.Error())
 			return
 		}
-		h(uid, res, req)
-	})
-}
-
-func (s *Server) minifyURLHandler() handlerWithUserID {
-	return func(userID string, res http.ResponseWriter, req *http.Request) {
-		var err error
 
 		err = validateContentType("text/plain", req.Header)
 		if err != nil {
@@ -215,11 +206,12 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 
 		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
 
-		minifiedURL, err := s.Service.MinifyURL(userID, url.String())
+		minifiedURL, err := s.Service.MinifyURL(ctx, userID, url.String())
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
-				responseWithError(res, err, http.StatusInternalServerError)
+				statusCode = http.StatusInternalServerError
+				responseWithError(res, err, statusCode)
 				s.logger.Error(err.Error())
 				return
 			}
@@ -267,7 +259,16 @@ type minifyURLResponse struct {
 
 func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 	return func(userID string, res http.ResponseWriter, req *http.Request) {
-		if err := validateContentType("application/json", req.Header); err != nil {
+		var err error
+
+		if userID == "" {
+			err = errors.New("userID is empty")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
+			return
+		}
+
+		if err = validateContentType("application/json", req.Header); err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
 			return
@@ -276,7 +277,7 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 		// decode JSON request
 		var reqBody minifyURLRequest
 		d := json.NewDecoder(req.Body)
-		if err := d.Decode(&reqBody); err != nil {
+		if err = d.Decode(&reqBody); err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
 			return
@@ -284,11 +285,13 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 		defer req.Body.Close()
 
 		// handle request
-		minifiedURL, err := s.Service.MinifyURL(userID, reqBody.URL)
+		ctx := req.Context()
+		minifiedURL, err := s.Service.MinifyURL(ctx, userID, reqBody.URL)
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
-				responseWithError(res, err, http.StatusInternalServerError)
+				statusCode = http.StatusInternalServerError
+				responseWithError(res, err, statusCode)
 				s.logger.Error(err.Error())
 				return
 			}
@@ -315,8 +318,27 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 // func (s *Server)
 
 func responseWithError(res http.ResponseWriter, err error, statusCode int) {
+
+	if res == nil {
+		err = fmt.Errorf("%w: %s", errResponseWithError, errors.New("nil responseWriter"))
+		slog.Error(err.Error())
+		return
+	}
+	res.Header().Set("Content-Type", "text/plain")
+
+	if err == nil {
+		// replace the err and HTTP status code and still write the response
+		err = fmt.Errorf("%w: %s", errResponseWithError, errors.New("nil err"))
+		statusCode = http.StatusInternalServerError
+		slog.Error(err.Error())
+		http.Error(res, err.Error(), statusCode)
+		return
+	}
+
 	http.Error(res, err.Error(), statusCode)
 }
+
+var errResponseWithError = errors.New("failed to response with error")
 
 // validateContentType checks if the `mediaType` exists in the `headers`
 func validateContentType(mediaType string, headers http.Header) error {
@@ -333,76 +355,150 @@ func validateContentType(mediaType string, headers http.Header) error {
 }
 
 func (s *Server) minifyURLsHandler() handlerWithUserID {
-	return func(userID string, w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+		var err error
 
-		var req minifyURLsRequest
-
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			responseWithError(w, err, http.StatusBadRequest)
+		if userID == "" {
+			err = errors.New("userID is empty")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
 			return
 		}
 
+		var reqBody minifyURLsRequest
+		err = json.NewDecoder(req.Body).Decode(&reqBody)
+		if err != nil {
+			responseWithError(res, err, http.StatusBadRequest)
+			return
+		}
+
+		// handle request
 		var originalURLs []map[string]string
-		for _, v := range req {
+		for _, v := range reqBody {
 			originalURLs = append(originalURLs, v.toMap())
 		}
 
-		minifiedURLs, err := s.MinifyURLs(userID, originalURLs)
+		ctx := req.Context()
+		minifiedURLs, err := s.MinifyURLs(ctx, userID, originalURLs)
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
-				responseWithError(w, err, http.StatusInternalServerError)
+				statusCode = http.StatusInternalServerError
+				responseWithError(res, err, statusCode)
 				s.logger.Error(err.Error())
 				return
 			}
 			statusCode = http.StatusConflict
 		}
 
+		// handle response
 		var resBody minifyURLsResponse
 		for _, v := range minifiedURLs {
-			var mURL minifyURLsResponseData
+			var mURL minifyURLsResponseItem
 			mURL.fromMap(v)
 			resBody = append(resBody, mURL)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		if err = json.NewEncoder(w).Encode(resBody); err != nil {
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(statusCode)
+		if err = json.NewEncoder(res).Encode(resBody); err != nil {
 			s.logger.Error(err.Error())
 		}
 	}
 }
 
 type (
-	minifyURLsRequest  []minifyURLsRequestData
-	minifyURLsResponse []minifyURLsResponseData
+	minifyURLsRequest  []minifyURLsRequestItem
+	minifyURLsResponse []minifyURLsResponseItem
 )
 
-type minifyURLsRequestData struct {
+type minifyURLsRequestItem struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
-func (m minifyURLsRequestData) toMap() map[string]string {
+func (m minifyURLsRequestItem) toMap() map[string]string {
 	return map[string]string{m.CorrelationID: m.OriginalURL}
 }
 
-func (m *minifyURLsResponseData) fromMap(ma map[string]string) {
+func (m *minifyURLsResponseItem) fromMap(ma map[string]string) {
 	for i, v := range ma {
 		m.CorrelationID = i
 		m.ShortURL = v
 	}
 }
 
-type minifyURLsResponseData struct {
+type minifyURLsResponseItem struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
-func (s *Server) userURLsHandler() http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		_, _ = res, req
-		res.WriteHeader(http.StatusNotImplemented)
+func (s *Server) userURLsHandler() handlerWithUserID {
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+		var err error
+
+		if userID == "" {
+			err = errors.New("userID is empty")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
+			return
+		}
+
+		ctx := req.Context()
+
+		userURLs, err := s.UserURLs(ctx, userID)
+		if err != nil {
+			responseWithError(res, err, http.StatusInternalServerError)
+			s.logger.Error(err.Error())
+			return
+		}
+
+		statusCode := http.StatusNoContent
+		var r userURLsHandlerResponse
+		for _, v := range userURLs {
+			r = append(r,
+				userURLsResponseItem{
+					ShortURL:    v.MinifiedURL.String(),
+					OriginalURL: v.OriginalURL.String()},
+			)
+		}
+
+		if len(r) > 0 {
+			statusCode = http.StatusOK
+		}
+
+		s.responseWithJSON(res, r, statusCode)
+
 	}
 }
+
+type (
+	userURLsHandlerResponse []userURLsResponseItem
+
+	userURLsResponseItem struct {
+		ShortURL    string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
+	}
+)
+
+func (s *Server) responseWithJSON(res http.ResponseWriter, payload any, statusCode int) {
+	var (
+		jsonData []byte
+		err      error
+	)
+
+	if jsonData, err = json.Marshal(payload); err != nil {
+		err = fmt.Errorf("%w: %s", errResponseWithJSON, err)
+		statusCode = http.StatusInternalServerError
+		responseWithError(res, err, statusCode)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(statusCode)
+	res.Write(jsonData)
+
+}
+
+var errResponseWithJSON = errors.New("failed to respond with JSON")

@@ -142,6 +142,7 @@ func (s *Server) withLoggingMiddleware(h http.Handler) http.Handler {
 			"Duration, ns", time.Since(start),
 		)
 
+		s.logger.Debug("req:", fmt.Sprintf("%+v", req))
 		s.logger.Info("Response:",
 			"Status Code", lw.statusCode,
 			"Content size, bytes", lw.contentLength,

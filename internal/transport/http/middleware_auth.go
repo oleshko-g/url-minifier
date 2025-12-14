@@ -19,7 +19,7 @@ func (s *Server) withAuthorization(h http.Handler) http.Handler {
 			err         error
 		)
 
-		switch userIDValue, err = s.authenticate(req); err != nil {
+		switch userIDValue, err = s.authenticate(req); {
 		case errors.Is(err, errInvalidCookie):
 			responseWithError(w, err, http.StatusBadRequest)
 			return
@@ -56,8 +56,7 @@ func (s *Server) withAuthentification(h http.Handler) http.Handler {
 			responseWithError(w, err, http.StatusBadRequest)
 			return
 
-		case errors.Is(err, http.ErrNoCookie),
-			errors.Is(err, errInvalidAuthToken):
+		case errors.Is(err, errInvalidAuthToken):
 			responseWithError(w, err, http.StatusUnauthorized)
 			return
 		}
@@ -168,4 +167,19 @@ var (
 func userIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(contextKeyUserID).(string)
 	return userID, ok
+}
+
+func (s *Server) authorized(h handlerWithUserID) http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		var err error
+		ctx := req.Context()
+		uid, ok := userIDFromContext(ctx)
+		if !ok {
+			err = errors.New("no userID in the request")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
+			return
+		}
+		h(uid, res, req)
+	})
 }

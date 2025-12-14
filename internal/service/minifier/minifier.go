@@ -1,9 +1,11 @@
 package minifier
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"errors"
+	"net/url"
 
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
@@ -31,10 +33,19 @@ func (s *Service) Ping() error {
 // MinifyURL takes any string, encodes it and returns the minified URL or an error. If the original URL is minified already MinifyURL returns both non empty minifiedURL and [ErrMinifiedAlready] error
 //
 // TODO: add tests
-func (s *Service) MinifyURL(userID, url string) (minifiedURL string, err error) {
-	minifiedID := encode([]byte(url), s.MaxLen)
+func (s *Service) MinifyURL(ctx context.Context, userID, originalURL string) (minifiedURL string, err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
-	err = s.storage.Save(minifiedID, url)
+	minifiedID := encode([]byte(originalURL), s.MaxLen)
+	minifiedURL = s.newMinifiedURL(minifiedID)
+
+	err = s.storage.SaveUserString(ctx, storage.UserString{
+		UserID: userID,
+		Key:    minifiedID,
+		Value:  originalURL,
+	})
 	if err != nil {
 		if !errors.Is(err, storageErrors.ErrAlreadyExists) {
 			return "", err
@@ -42,9 +53,11 @@ func (s *Service) MinifyURL(userID, url string) (minifiedURL string, err error) 
 		err = ErrMinifiedAlready
 	}
 
-	minifiedURL = s.Config.BaseURL().String() + "/" + minifiedID
-
 	return minifiedURL, err
+}
+
+func (s *Service) newMinifiedURL(minifiedID string) string {
+	return s.Config.BaseURL().String() + "/" + minifiedID
 }
 
 // UnMinifyURL takes an id of the minified URL and returns the stored original URL or an error
@@ -60,15 +73,23 @@ func encode(data []byte, maxLen int) string {
 	return base64.RawURLEncoding.EncodeToString(checksum[:maxLen])
 }
 
-// MinifyURLs takes a slice of URLs coupled with their correlation ids an return the slice of minified URLs coupled with correlation ids or the first error occurred
+// MinifyURLs takes a slice of URLs coupled with their correlation ids.
+// It returns a slice of minified URLs coupled with correlation ids or the first error occurred
 //
+// a map key is a correlation ID
+// "urls" map value is an original URL
+// "minifiedURLs" map value is a minifiedURL
 // TODO: add tests
 // TODO: rewrite to use storage.SaveList
-func (s *Service) MinifyURLs(userID string, urls []map[string]string) (minifiedURLs []map[string]string, err error) {
-	for _, url := range urls {
+func (s *Service) MinifyURLs(ctx context.Context, userID string, originalURLs []map[string]string) (minifiedURLs []map[string]string, err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	for _, oURL := range originalURLs {
 		minifiedURL := make(map[string]string, 1)
-		for correlationID, originalURL := range url {
-			minifiedURL[correlationID], err = s.MinifyURL(userID, originalURL)
+		for correlationID, originalURL := range oURL {
+			minifiedURL[correlationID], err = s.MinifyURL(ctx, userID, originalURL)
 		}
 
 		if err != nil {
@@ -80,4 +101,28 @@ func (s *Service) MinifyURLs(userID string, urls []map[string]string) (minifiedU
 		minifiedURLs = append(minifiedURLs, minifiedURL)
 	}
 	return minifiedURLs, err
+}
+
+func (s *Service) UserURLs(ctx context.Context, userID string) ([]URL, error) {
+	uss, err := s.storage.RetrieveUserStrings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var urls []URL
+	for _, us := range uss {
+		mURL := s.newURL(us.Key, us.Value)
+
+		urls = append(urls, mURL)
+	}
+	return urls, nil
+}
+
+func (s *Service) newURL(id, originalURL string) URL {
+	oURL, _ := url.Parse(originalURL)
+	mURL, _ := url.Parse(s.newMinifiedURL(id))
+	return URL{
+		OriginalURL: oURL,
+		MinifiedURL: mURL,
+	}
 }

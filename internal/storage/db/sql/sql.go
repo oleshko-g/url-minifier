@@ -91,6 +91,7 @@ func (s *Storage) SaveUserString(ctx context.Context, us storage.UserString) err
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
 			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
 		}
+		return err
 	}
 	return nil
 }
@@ -98,8 +99,12 @@ func (s *Storage) SaveUserString(ctx context.Context, us storage.UserString) err
 func (s *Storage) saveUserString(ctx context.Context, us storage.UserString) error {
 	row := s.db.QueryRowContext(ctx,
 		query.InsertUserString,
-		us.UserID, us.Key, us.Value, sql.Named("created_at",
-			time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
+		us.UserID,
+		us.Key,
+		us.Value,
+		sql.Named("created_at", time.Now().UTC()),
+		sql.NullTime{},
+		sql.NullTime{},
 	)
 
 	err := row.Scan(&us.Key, &us.Value)

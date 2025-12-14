@@ -5,14 +5,21 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
 // NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
 func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
-	return &strRecords{
+	records := &strRecords{
 		mux: sync.RWMutex{},
 		m:   make(map[string]string),
+	}
+	var i any = records
+	if _, ok := i.(storage.Storager); !ok {
+		return nil
+	} else {
+		return records
 	}
 }
 
@@ -26,12 +33,24 @@ type strRecords struct {
 	m   map[string]string
 }
 
+// FIXME: cannot use (*strRecords)(nil) (value of type *strRecords) as storage.Storager value in variable declaration: *strRecords does not implement storage.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
+// var _ storage.Storager = (*strRecords)(nil)
+
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.m[key] = value
 	return nil
 }
+
+// // // TODO: create userString struct, import, save in the map
+// func (s *strRecords) SaveUserString(ctx context.Context, userID, key, value string) error {
+// 	if ctx == nil {
+// 		ctx = context.Background()
+// 	}
+// 	_, _, _, _ = ctx, userID, key, value
+// 	return nil
+// }
 
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
 //

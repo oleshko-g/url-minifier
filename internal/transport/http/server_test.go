@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ type testMinifierResponse struct {
 type testApp struct {
 	minifierConfig minifier.Config
 	Config
-	minifier.Storager
+	storage.Storager
 	*minifier.Service
 	*Server
 }
@@ -32,7 +33,16 @@ type testApp struct {
 func newTestApp() *testApp {
 	var ta testApp
 
-	ta.Storager = memory.NewStrRecords()
+	// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
+	storage := memory.NewStrRecords()
+	if storage == nil {
+		ta.Storager = nil
+	}
+
+	if ta.Storager == nil {
+		return nil
+	}
+
 	ta.minifierConfig.MaxLen = 8
 	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
 	ta.Service = minifier.New(ta.Storager, &ta.minifierConfig)
@@ -42,6 +52,10 @@ func newTestApp() *testApp {
 
 func TestServer_minifyURLHandler(t *testing.T) {
 	ta := newTestApp()
+	if ta == nil {
+		t.Fatal("failed to set up test app")
+	}
+
 	tests := []struct {
 		name        string // description of this test case
 		originalURL string
