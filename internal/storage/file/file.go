@@ -50,21 +50,22 @@ func (f *File) Ping() error {
 }
 
 type record struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	UserID string `json:"user_id"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
 }
 
 // Save saves the value under the key or return an error if key already exists
 //
 // TODO: add tests
-func (f *File) Save(key, value string) (err error) {
+func (f *File) Save(key, value string) error {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	// TODO: sync every 100 ms instead of every write
 	// TODO: add in-memory storage and update on every Sync()
 	defer f.p.Sync()
 
-	err = f.save(key, value)
+	err := f.save(key, value)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
 			slog.Warn(fmt.Sprintf("key %s already exists", key))
@@ -72,11 +73,11 @@ func (f *File) Save(key, value string) (err error) {
 		}
 		return err
 	}
-	return
+	return nil
 }
 
-func (f *File) save(key, value string) (err error) {
-	if _, err = f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
+func (f *File) save(key, value string) error {
+	if _, err := f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
 		return storageErrors.ErrAlreadyExists
 	}
 
@@ -84,11 +85,25 @@ func (f *File) save(key, value string) (err error) {
 }
 
 func (f *File) SaveUserString(ctx context.Context, us storage.UserString) error {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	err := f.saveUserString(us)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
+			return nil
+		}
+		return err
+	}
 	return nil
 }
 
 func (f *File) saveUserString(us storage.UserString) error {
-	return nil
+
+	if _, err := f.retrieve(us.Key); !errors.Is(err, storageErrors.ErrNotFound) {
+		return storageErrors.ErrAlreadyExists
+	}
+	return json.NewEncoder(f.p).Encode(record{UserID: us.UserID, Key: us.Key, Value: us.Value})
 }
 
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
@@ -150,12 +165,36 @@ func (f *File) RetrieveUserStrings(ctx context.Context, userID string) ([]storag
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	_, _, _ = f.retrieveUserStrings(userID)
+	rr, err := f.newRecordReader()
+	if err != nil {
+		return nil, err
+	}
+	var urs []storage.UserString
+	for {
+		var fr record
+		err = rr.decoder.Decode(&fr)
+		if fr.UserID == userID {
+			urs = append(urs, storage.UserString{UserID: userID, Key: fr.Key, Value: fr.Value})
+		}
 
-	return []storage.UserString{}, nil
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				if len(urs) == 0 {
+					return nil, storageErrors.ErrNotFound
+				}
+
+				break
+			}
+
+			return nil, err
+		}
+	}
+
+	return urs, nil
 }
 
 func (f *File) retrieveUserStrings(userID string) (key, value string, err error) {
+
 	return "", "", nil
 }
 
