@@ -164,6 +164,12 @@ func (s *Storage) RetrieveUserStrings(ctx context.Context, userID string) ([]sto
 
 		uss = append(uss, us)
 	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
 	return uss, nil
 }
 

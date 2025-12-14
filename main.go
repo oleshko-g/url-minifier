@@ -90,17 +90,21 @@ func (a *app) setup() (err error) {
 	if a.sqlConfig.String() != "" {
 		a.Storager, err = sql.New(&a.sqlConfig)
 		slog.Info("The storage is set to db.")
-	} else if a.fileConfig.Path().String() != "" {
-		// FIXME: "cannot use file.New(&a.fileConfig) (value of type *file.File) as minifier.Storager value in assignment: *file.File does not implement minifier.Storager (missing method SaveUserStringCtx) (compiler InvalidIfaceAssign)"
-		// a.Storager, err = file.New(&a.fileConfig)
-		// slog.Info("The storage is set to file.")
-		// err = fmt.Errorf("file storage isn't fully implemented")
-	} else {
-		// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
-		// a.Storager = memory.NewStrRecords()
-		// slog.Info("The storage is set to memory.")
-		// err = fmt.Errorf("memory storage isn't fully implemented")
 	}
+	////////////////////////////////////////////////////////////////
+	// else if a.fileConfig.Path().String() != "" {
+	// 	// FIXME: "cannot use file.New(&a.fileConfig) (value of type *file.File) as minifier.Storager value in assignment: *file.File does not implement minifier.Storager (missing method SaveUserStringCtx) (compiler InvalidIfaceAssign)"
+	// 	// a.Storager, err = file.New(&a.fileConfig)
+	// 	// slog.Info("The storage is set to file.")
+	// 	err = fmt.Errorf("file storage isn't fully implemented")
+	// } else {
+	// 	// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
+	// 	// a.Storager = memory.NewStrRecords()
+	// 	// slog.Info("The storage is set to memory.")
+	// 	// err = fmt.Errorf("memory storage isn't fully implemented")
+	// }
+	/////////////////////////////////////////////////////////////////
+
 	if err != nil {
 		return err
 	}
