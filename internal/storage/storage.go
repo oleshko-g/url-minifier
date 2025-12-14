@@ -10,9 +10,10 @@ type Storager interface {
 	SaveList(values []map[string]string) error
 	Retrieve(key string) (value string, err error)
 	Ping() error
-	SaveUserString(ctx context.Context, user_id, key, value string) error
+	SaveUserString(ctx context.Context, us UserString) error
+	RetrieveUserStrings(ctx context.Context, userID string) ([]UserString, error)
 }
 
-type userString struct {
-	userID, key, value string
+type UserString struct {
+	UserID, Key, Value string
 }

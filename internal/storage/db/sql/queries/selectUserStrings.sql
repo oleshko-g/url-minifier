@@ -1,4 +1,5 @@
 SELECT
+  user_id,
   id,
   value
 FROM

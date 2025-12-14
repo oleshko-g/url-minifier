@@ -20,5 +20,5 @@ var SelectUserStrings string
 
 // InsertUserStrings is the SQL statement to select all string by user_id from a db
 //
-//go:embed insertUserStrings.sql
-var InsertUserStrings string
+//go:embed insertUserString.sql
+var InsertUserString string

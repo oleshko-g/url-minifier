@@ -81,28 +81,28 @@ func (s *Storage) save(key, value string) error {
 	return nil
 }
 
-func (s *Storage) SaveUserString(ctx context.Context, userID, key, value string) error {
+func (s *Storage) SaveUserString(ctx context.Context, us storage.UserString) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	err := s.saveUserString(ctx, userID, key, value)
+	err := s.saveUserString(ctx, us)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
-			slog.Warn(fmt.Sprintf("key %s already exists", key))
+			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
 		}
 	}
 	return nil
 }
 
-func (s *Storage) saveUserString(ctx context.Context, userID, key, value string) error {
-	row := s.db.QueryRow(
-		query.InsertUserStrings,
-		userID, key, value, sql.Named("created_at",
+func (s *Storage) saveUserString(ctx context.Context, us storage.UserString) error {
+	row := s.db.QueryRowContext(ctx,
+		query.InsertUserString,
+		us.UserID, us.Key, us.Value, sql.Named("created_at",
 			time.Now().UTC()), sql.NullTime{}, sql.NullTime{},
 	)
 
-	err := row.Scan(&key, &value)
+	err := row.Scan(&us.Key, &us.Value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return storageErrors.ErrAlreadyExists
@@ -131,6 +131,35 @@ func (s *Storage) retrieve(key string) (value string, err error) {
 	}
 
 	return value, nil
+}
+
+// RetrieveUserStrings takes userID and return a slice of [storage.UserString]'s
+//
+// TODO: add test
+func (s *Storage) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	var err error
+
+	if userID == "" {
+		err = fmt.Errorf("%w: %s", storageErrors.ErrEmptyParameter, "userID")
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, query.SelectUserStrings, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var uss []storage.UserString
+	for rows.Next() {
+		var us storage.UserString
+		err := rows.Scan(&us.UserID, &us.Key, &us.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		uss = append(uss, us)
+	}
+	return uss, nil
 }
 
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error

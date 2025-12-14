@@ -5,27 +5,18 @@ import (
 	"encoding/base64"
 	"errors"
 
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
 // Service is the implementation of [http.Service]
 type Service struct {
-	storage Storager
+	storage storage.Storager
 	*Config
 }
 
-// Storager is the expected implementation of storage for the URL minifier
-//
-//go:generate moq -pkg file -out ../../mock/storage/storage.go . Storager
-type Storager interface {
-	Save(key, value string) error
-	SaveList(values []map[string]string) error
-	Retrieve(key string) (value string, err error)
-	Ping() error
-}
-
 // New configures a URL minifier service with the passed [Storager] and [Config]
-func New(s Storager, cp *Config) *Service {
+func New(s storage.Storager, cp *Config) *Service {
 	return &Service{
 		storage: s,
 		Config:  cp,
