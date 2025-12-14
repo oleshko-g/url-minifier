@@ -33,13 +33,7 @@ type testApp struct {
 func newTestApp() *testApp {
 	var ta testApp
 
-	// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
 	ta.Storager = memory.NewStrRecords()
-
-	if ta.Storager == nil {
-		return nil
-	}
-
 	ta.minifierConfig.MaxLen = 8
 	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
 	ta.Service = minifier.New(ta.Storager, &ta.minifierConfig)
@@ -49,9 +43,6 @@ func newTestApp() *testApp {
 
 func TestServer_minifyURLHandler(t *testing.T) {
 	ta := newTestApp()
-	if ta == nil {
-		t.Fatal("failed to set up test app")
-	}
 
 	tests := []struct {
 		name        string // description of this test case
@@ -82,8 +73,10 @@ func TestServer_minifyURLHandler(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			handler := ta.Server.minifyURLHandler()
-			authorizedHandler := ta.Server.authorized(handler)
-			authorizedHandler(w, req)
+			withUserIDHandler := ta.Server.authorized(handler)
+			authorizedHandler := ta.Server.withAuthorization(withUserIDHandler)
+			authorizedHandler.ServeHTTP(w, req)
+
 			res := w.Result()
 
 			body, err := io.ReadAll(res.Body)
@@ -191,8 +184,9 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			handler := ta.Server.minifyURLJSONHandler()
-			authorizedHandler := ta.Server.authorized(handler)
-			authorizedHandler(w, req)
+			withUseIDFromContextHandler := ta.Server.authorized(handler)
+			authorizedHandler := ta.Server.withAuthorization(withUseIDFromContextHandler)
+			authorizedHandler.ServeHTTP(w, req)
 
 			res := w.Result()
 			body, err := io.ReadAll(res.Body)
