@@ -2,6 +2,7 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
@@ -34,6 +36,8 @@ type File struct {
 	p   *os.File
 	*Config
 }
+
+var _ storage.Storager = (*File)(nil)
 
 // Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {
@@ -77,6 +81,14 @@ func (f *File) save(key, value string) (err error) {
 	}
 
 	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
+}
+
+func (f *File) SaveUserString(ctx context.Context, us storage.UserString) error {
+	return nil
+}
+
+func (f *File) saveUserString(us storage.UserString) error {
+	return nil
 }
 
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
@@ -131,6 +143,20 @@ func (f *File) retrieve(key string) (value string, err error) {
 		// set fr to zero value before the next Decode
 		fr = record{}
 	}
+}
+
+func (f *File) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	_ = ctx
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	_, _, _ = f.retrieveUserStrings(userID)
+
+	return []storage.UserString{}, nil
+}
+
+func (f *File) retrieveUserStrings(userID string) (key, value string, err error) {
+	return "", "", nil
 }
 
 type recordReader struct {
