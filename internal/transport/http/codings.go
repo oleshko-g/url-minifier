@@ -1,5 +1,5 @@
 // Package http is an internal [http.Server] implementation
-package http
+package http //revive:disable-line:var-naming
 
 import (
 	"errors"

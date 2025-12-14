@@ -81,6 +81,7 @@ func (s *Storage) save(key, value string) error {
 	return nil
 }
 
+// SaveUserString saves a [storage.UserString] in the database
 func (s *Storage) SaveUserString(ctx context.Context, us storage.UserString) error {
 	if ctx == nil {
 		ctx = context.Background()

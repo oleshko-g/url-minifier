@@ -117,6 +117,8 @@ func (s *strRecords) Retrieve(key string) (value string, err error) {
 }
 
 func (s *strRecords) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	_ = ctx
+
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 

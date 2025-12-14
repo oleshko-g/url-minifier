@@ -1,5 +1,5 @@
 // Package errors is the internal storage package
-package errors
+package errors //revive:disable:var-naming
 
 import (
 	"errors"

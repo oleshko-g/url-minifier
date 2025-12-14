@@ -3,6 +3,7 @@ package minifier
 import "net/url"
 
 type (
+	// URL is the structure intended to be returned by minifier Public methods
 	URL struct {
 		OriginalURL minifierURL
 		MinifiedURL minifierURL

@@ -103,6 +103,7 @@ func (s *Service) MinifyURLs(ctx context.Context, userID string, originalURLs []
 	return minifiedURLs, err
 }
 
+// UserURLs takes userID and return a slice of [minifier.URL]'s or an error
 func (s *Service) UserURLs(ctx context.Context, userID string) ([]URL, error) {
 	uss, err := s.storage.RetrieveUserStrings(ctx, userID)
 	if err != nil {

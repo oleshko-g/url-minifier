@@ -1,3 +1,4 @@
+// Package storage is the package intended to be imported by minifier package and every storage implementation
 package storage
 
 import "context"
@@ -14,6 +15,7 @@ type Storager interface {
 	RetrieveUserStrings(ctx context.Context, userID string) ([]UserString, error)
 }
 
+// UserString is the structure used in [storage.Storager] implementations
 type UserString struct {
 	UserID, Key, Value string
 }

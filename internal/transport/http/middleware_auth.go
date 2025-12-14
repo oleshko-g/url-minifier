@@ -1,4 +1,4 @@
-package http
+package http //revive:disable-line:var-naming
 
 import (
 	"context"

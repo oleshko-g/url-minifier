@@ -1,4 +1,4 @@
-package http
+package http //revive:disable-line:var-naming
 
 import (
 	"errors"
@@ -25,7 +25,8 @@ func (c *Config) Address() *address { // revive:disable-line:unexported-return p
 	return &c.address
 }
 
-func (c *Config) SecretAuthKey() *secret {
+// SecretAuthKey returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) SecretAuthKey() *secret { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.secretKey
 }
 

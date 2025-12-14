@@ -84,7 +84,10 @@ func (f *File) save(key, value string) error {
 	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
 }
 
+// SaveUserString appends a [storage.UserString] to the file storage
 func (f *File) SaveUserString(ctx context.Context, us storage.UserString) error {
+	_ = ctx
+
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	err := f.saveUserString(us)
@@ -160,6 +163,7 @@ func (f *File) retrieve(key string) (value string, err error) {
 	}
 }
 
+// RetrieveUserStrings takes userID and returns a slice of [storage.UserString]'s or an error
 func (f *File) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
 	_ = ctx
 	f.mux.RLock()
@@ -193,7 +197,7 @@ func (f *File) RetrieveUserStrings(ctx context.Context, userID string) ([]storag
 	return urs, nil
 }
 
-func (f *File) retrieveUserStrings(userID string) (key, value string, err error) {
+func (f *File) retrieveUserStrings(userID string) (key, value string, err error) { //revive:disable-line:unused-parameter userID is used for comparison only
 
 	return "", "", nil
 }
