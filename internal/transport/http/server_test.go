@@ -34,10 +34,7 @@ func newTestApp() *testApp {
 	var ta testApp
 
 	// FIXME: cannot use memory.NewStrRecords() (value of type *memory.strRecords) as minifier.Storager value in assignment: *memory.strRecords does not implement minifier.Storager (missing method SaveUserString) (compiler InvalidIfaceAssign)
-	storage := memory.NewStrRecords()
-	if storage == nil {
-		ta.Storager = nil
-	}
+	ta.Storager = memory.NewStrRecords()
 
 	if ta.Storager == nil {
 		return nil

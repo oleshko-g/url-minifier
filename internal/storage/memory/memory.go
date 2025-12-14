@@ -40,10 +40,10 @@ type (
 	user string
 	key  = string
 
-	userKeys = map[user][]useKey
+	userKeys = map[user][]userKey
 	values   = map[key]string
 
-	useKey struct {
+	userKey struct {
 		key
 		createdAt time.Time
 		updatedAt time.Time
@@ -85,7 +85,7 @@ func (s *strRecords) SaveUserString(ctx context.Context, us storage.UserString) 
 	}
 
 	urs := s.userKeys[user(us.UserID)]
-	urs = append(urs, useKey{
+	urs = append(urs, userKey{
 		key:       us.Key,
 		createdAt: time.Now().UTC(),
 		updatedAt: time.Now().UTC(),
