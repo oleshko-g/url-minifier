@@ -183,3 +183,15 @@ func (s *Server) authorized(h handlerWithUserID) http.HandlerFunc {
 		h(uid, res, req)
 	})
 }
+
+func (s *Server) withJSON(h http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		err := validateContentType("application/json", req.Header)
+		if err != nil {
+			responseWithError(res, err, http.StatusBadRequest)
+			s.logger.Error(err.Error())
+			return
+		}
+		h.ServeHTTP(res, req)
+	})
+}

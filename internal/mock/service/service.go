@@ -20,6 +20,9 @@ var _ http.Service = &ServiceMock{}
 //
 //		// make and configure a mocked http.Service
 //		mockedService := &ServiceMock{
+//			DeleteUserURLsFunc: func(ctx context.Context, userID string, minifiedIDs []string) error {
+//				panic("mock out the DeleteUserURLs method")
+//			},
 //			MinifyURLFunc: func(ctx context.Context, userID string, url string) (string, error) {
 //				panic("mock out the MinifyURL method")
 //			},
@@ -42,6 +45,9 @@ var _ http.Service = &ServiceMock{}
 //
 //	}
 type ServiceMock struct {
+	// DeleteUserURLsFunc mocks the DeleteUserURLs method.
+	DeleteUserURLsFunc func(ctx context.Context, userID string, minifiedIDs []string) error
+
 	// MinifyURLFunc mocks the MinifyURL method.
 	MinifyURLFunc func(ctx context.Context, userID string, url string) (string, error)
 
@@ -59,6 +65,15 @@ type ServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// DeleteUserURLs holds details about calls to the DeleteUserURLs method.
+		DeleteUserURLs []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// UserID is the userID argument value.
+			UserID string
+			// MinifiedIDs is the minifiedIDs argument value.
+			MinifiedIDs []string
+		}
 		// MinifyURL holds details about calls to the MinifyURL method.
 		MinifyURL []struct {
 			// Ctx is the ctx argument value.
@@ -93,11 +108,52 @@ type ServiceMock struct {
 			UserID string
 		}
 	}
-	lockMinifyURL   sync.RWMutex
-	lockMinifyURLs  sync.RWMutex
-	lockPing        sync.RWMutex
-	lockUnMinifyURL sync.RWMutex
-	lockUserURLs    sync.RWMutex
+	lockDeleteUserURLs sync.RWMutex
+	lockMinifyURL      sync.RWMutex
+	lockMinifyURLs     sync.RWMutex
+	lockPing           sync.RWMutex
+	lockUnMinifyURL    sync.RWMutex
+	lockUserURLs       sync.RWMutex
+}
+
+// DeleteUserURLs calls DeleteUserURLsFunc.
+func (mock *ServiceMock) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error {
+	if mock.DeleteUserURLsFunc == nil {
+		panic("ServiceMock.DeleteUserURLsFunc: method is nil but Service.DeleteUserURLs was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		UserID      string
+		MinifiedIDs []string
+	}{
+		Ctx:         ctx,
+		UserID:      userID,
+		MinifiedIDs: minifiedIDs,
+	}
+	mock.lockDeleteUserURLs.Lock()
+	mock.calls.DeleteUserURLs = append(mock.calls.DeleteUserURLs, callInfo)
+	mock.lockDeleteUserURLs.Unlock()
+	return mock.DeleteUserURLsFunc(ctx, userID, minifiedIDs)
+}
+
+// DeleteUserURLsCalls gets all the calls that were made to DeleteUserURLs.
+// Check the length with:
+//
+//	len(mockedService.DeleteUserURLsCalls())
+func (mock *ServiceMock) DeleteUserURLsCalls() []struct {
+	Ctx         context.Context
+	UserID      string
+	MinifiedIDs []string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		UserID      string
+		MinifiedIDs []string
+	}
+	mock.lockDeleteUserURLs.RLock()
+	calls = mock.calls.DeleteUserURLs
+	mock.lockDeleteUserURLs.RUnlock()
+	return calls
 }
 
 // MinifyURL calls MinifyURLFunc.

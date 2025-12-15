@@ -34,6 +34,7 @@ type Service interface {
 		urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
 	UserURLs(ctx context.Context, userID string) ([]minifier.URL, error)
+	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
 	Ping() error
 }
 
@@ -67,6 +68,7 @@ func NewServer(s Service, cp *Config) *Server {
 			r.Post("/shorten", srv.authorized(srv.minifyURLJSONHandler()))
 			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
 			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
+			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
 		})
 	})
 
@@ -472,6 +474,46 @@ func (s *Server) userURLsHandler() handlerWithUserID {
 
 	}
 }
+
+func (s *Server) deleteUserURLsHandler() handlerWithUserID {
+	return func(userID string, res http.ResponseWriter, req *http.Request) {
+		var err error
+
+		if userID == "" {
+			err = errors.New("userID is empty")
+			responseWithError(res, err, http.StatusUnauthorized)
+			s.logger.Error(err.Error())
+			return
+		}
+		defer req.Body.Close()
+
+		err = validateContentType("application/json", req.Header)
+		if err != nil {
+			responseWithError(res, err, http.StatusBadRequest)
+			s.logger.Error(err.Error())
+			return
+		}
+		var minifiedIDs []string
+		d := json.NewDecoder(req.Body)
+		for d.More() {
+			var minifiedID string
+			err = d.Decode(&s)
+			if err != nil {
+				responseWithError(res, err, http.StatusBadRequest)
+				s.logger.Error(err.Error())
+				return
+			}
+			minifiedIDs = append(minifiedIDs, minifiedID)
+		}
+
+		ctx := req.Context()
+		s.Service.DeleteUserURLs(ctx, userID, minifiedIDs)
+
+		res.WriteHeader(http.StatusAccepted)
+	}
+}
+
+type deleteUserURLsRequest []string
 
 type (
 	userURLsHandlerResponse []userURLsResponseItem
