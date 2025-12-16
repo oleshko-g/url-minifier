@@ -39,3 +39,12 @@ type UserString struct {
 	Value     string
 	DeletedAt *time.Time
 }
+
+func (us UserString) IsDeleted() bool {
+	if us.DeletedAt != nil {
+		if time.Now().After(*us.DeletedAt) {
+			return true
+		}
+	}
+	return false
+}

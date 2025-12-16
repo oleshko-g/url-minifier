@@ -237,3 +237,8 @@ func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key str
 	_, _, _ = ctx, userID, key
 	return nil
 }
+
+func (f *File) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	_, _ = ctx, key
+	return storage.UserString{}, nil
+}

@@ -28,6 +28,9 @@ var _ storage.Storager = &StoragerMock{}
 //			RetrieveFunc: func(key string) (string, error) {
 //				panic("mock out the Retrieve method")
 //			},
+//			RetrieveUserStringFunc: func(ctx context.Context, key string) (storage.UserString, error) {
+//				panic("mock out the RetrieveUserString method")
+//			},
 //			RetrieveUserStringsFunc: func(ctx context.Context, userID string) ([]storage.UserString, error) {
 //				panic("mock out the RetrieveUserStrings method")
 //			},
@@ -55,6 +58,9 @@ type StoragerMock struct {
 
 	// RetrieveFunc mocks the Retrieve method.
 	RetrieveFunc func(key string) (string, error)
+
+	// RetrieveUserStringFunc mocks the RetrieveUserString method.
+	RetrieveUserStringFunc func(ctx context.Context, key string) (storage.UserString, error)
 
 	// RetrieveUserStringsFunc mocks the RetrieveUserStrings method.
 	RetrieveUserStringsFunc func(ctx context.Context, userID string) ([]storage.UserString, error)
@@ -84,6 +90,13 @@ type StoragerMock struct {
 		}
 		// Retrieve holds details about calls to the Retrieve method.
 		Retrieve []struct {
+			// Key is the key argument value.
+			Key string
+		}
+		// RetrieveUserString holds details about calls to the RetrieveUserString method.
+		RetrieveUserString []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Key is the key argument value.
 			Key string
 		}
@@ -117,6 +130,7 @@ type StoragerMock struct {
 	lockMarkDeletedUserString sync.RWMutex
 	lockPing                  sync.RWMutex
 	lockRetrieve              sync.RWMutex
+	lockRetrieveUserString    sync.RWMutex
 	lockRetrieveUserStrings   sync.RWMutex
 	lockSave                  sync.RWMutex
 	lockSaveList              sync.RWMutex
@@ -219,6 +233,42 @@ func (mock *StoragerMock) RetrieveCalls() []struct {
 	mock.lockRetrieve.RLock()
 	calls = mock.calls.Retrieve
 	mock.lockRetrieve.RUnlock()
+	return calls
+}
+
+// RetrieveUserString calls RetrieveUserStringFunc.
+func (mock *StoragerMock) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	if mock.RetrieveUserStringFunc == nil {
+		panic("StoragerMock.RetrieveUserStringFunc: method is nil but Storager.RetrieveUserString was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Key string
+	}{
+		Ctx: ctx,
+		Key: key,
+	}
+	mock.lockRetrieveUserString.Lock()
+	mock.calls.RetrieveUserString = append(mock.calls.RetrieveUserString, callInfo)
+	mock.lockRetrieveUserString.Unlock()
+	return mock.RetrieveUserStringFunc(ctx, key)
+}
+
+// RetrieveUserStringCalls gets all the calls that were made to RetrieveUserString.
+// Check the length with:
+//
+//	len(mockedStorager.RetrieveUserStringCalls())
+func (mock *StoragerMock) RetrieveUserStringCalls() []struct {
+	Ctx context.Context
+	Key string
+} {
+	var calls []struct {
+		Ctx context.Context
+		Key string
+	}
+	mock.lockRetrieveUserString.RLock()
+	calls = mock.calls.RetrieveUserString
+	mock.lockRetrieveUserString.RUnlock()
 	return calls
 }
 

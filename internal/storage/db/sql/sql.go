@@ -189,7 +189,7 @@ func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key 
 	dus, err := s.retrieveUserString(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = fmt.Errorf("%w: by key \"%s\"", storageErrors.ErrNotFound, key)
-		return storageErrors.ErrNotFound
+		return err
 	}
 
 	if userID != dus.UserID {
@@ -197,11 +197,8 @@ func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key 
 		return err
 	}
 
-	if dus.DeletedAt != nil {
-		// already marked as deleted
-		if time.Now().After(*dus.DeletedAt) {
-			return nil
-		}
+	if dus.IsDeleted() {
+		return nil
 	}
 
 	err = s.updateStringDeletedAt(ctx, key, time.Now().UTC())
@@ -225,4 +222,18 @@ func (s *Storage) retrieveUserString(ctx context.Context, key string) (dbUserStr
 func (s *Storage) updateStringDeletedAt(ctx context.Context, key string, t time.Time) error {
 	row := s.db.QueryRowContext(ctx, query.UpdateStringDeletedAt, key, t)
 	return row.Err()
+}
+
+func (s *Storage) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	dus, err := s.retrieveUserString(ctx, key)
+	if err != nil {
+		return storage.UserString{}, err
+	}
+
+	return storage.UserString{
+		UserID:  dus.UserID,
+		Key:     key,
+		Value:   dus.Value,
+		Deleted: dus.IsDeleted(),
+	}, nil
 }

@@ -34,7 +34,8 @@ type Service interface {
 		urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
 	UserURLs(ctx context.Context, userID string) ([]minifier.URL, error)
-	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
+	DeleteUserURLs(userID string, minifiedIDs []string) error
+	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
 }
 
@@ -239,10 +240,16 @@ func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 			s.logger.Error(err.Error())
 			return
 		}
-		url, err := s.Service.UnMinifyURL(id)
+		ctx := req.Context()
+		url, isDeleted, err := s.Service.UnMinifyUserURL(ctx, id)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
+			return
+		}
+
+		if isDeleted {
+			res.WriteHeader(http.StatusGone)
 			return
 		}
 
@@ -495,7 +502,6 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 		}
 		var minifiedIDs []string
 		d := json.NewDecoder(req.Body)
-		var minifiedID string
 		err = d.Decode(&minifiedIDs)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
@@ -504,10 +510,8 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 				return
 			}
 		}
-		minifiedIDs = append(minifiedIDs, minifiedID)
 
-		ctx := req.Context()
-		s.Service.DeleteUserURLs(ctx, userID, minifiedIDs)
+		go s.Service.DeleteUserURLs(userID, minifiedIDs)
 
 		res.WriteHeader(http.StatusAccepted)
 	}

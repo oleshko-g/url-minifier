@@ -129,8 +129,8 @@ func (s *Service) newURL(id, originalURL string) URL {
 }
 
 // DeleteUserURLs takes userID and a slice of minified IDs and markes as deleted the associated minified URLs
-func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error {
-
+func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
+	ctx := context.Background()
 	for _, mID := range minifiedIDs {
 		err := s.storage.MarkDeletedUserString(ctx, userID, mID)
 		if err != nil {
@@ -138,4 +138,13 @@ func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs
 		}
 	}
 	return nil
+}
+
+func (s *Service) UnMinifyUserURL(ctx context.Context, id string) (value string, isDeleted bool, err error) {
+	dus, err := s.storage.RetrieveUserString(ctx, id)
+	if err != nil {
+		return "", false, err
+	}
+
+	return dus.Value, dus.Deleted, nil
 }

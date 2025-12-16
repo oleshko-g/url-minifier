@@ -149,3 +149,8 @@ func (s *strRecords) MarkDeletedUserString(ctx context.Context, userID string, k
 	_, _, _ = ctx, userID, key
 	return nil
 }
+
+func (s *strRecords) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	_, _ = ctx, key
+	return storage.UserString{}, nil
+}

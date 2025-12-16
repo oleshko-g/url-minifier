@@ -7,6 +7,7 @@ type (
 	URL struct {
 		OriginalURL minifierURL
 		MinifiedURL minifierURL
+		Deleted     bool
 	}
 	minifierURL interface {
 		Parse(string) (*url.URL, error)
