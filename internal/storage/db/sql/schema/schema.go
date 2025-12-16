@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"time"
 
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	"github.com/pressly/goose/v3"
@@ -31,4 +32,10 @@ func Up(d db.DriverName, database *sql.DB) error {
 		return err
 	}
 	return nil
+}
+
+type UserString struct {
+	UserID    string
+	Value     string
+	DeletedAt *time.Time
 }

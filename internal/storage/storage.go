@@ -13,9 +13,11 @@ type Storager interface {
 	Ping() error
 	SaveUserString(ctx context.Context, us UserString) error
 	RetrieveUserStrings(ctx context.Context, userID string) ([]UserString, error)
+	MarkDeletedUserString(ctx context.Context, userID string, key string) error
 }
 
 // UserString is the structure used in [storage.Storager] implementations
 type UserString struct {
 	UserID, Key, Value string
+	Deleted            bool
 }

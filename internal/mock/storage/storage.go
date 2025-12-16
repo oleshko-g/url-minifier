@@ -19,6 +19,9 @@ var _ storage.Storager = &StoragerMock{}
 //
 //		// make and configure a mocked storage.Storager
 //		mockedStorager := &StoragerMock{
+//			MarkDeletedUserStringFunc: func(ctx context.Context, userID string, key string) error {
+//				panic("mock out the MarkDeletedUserString method")
+//			},
 //			PingFunc: func() error {
 //				panic("mock out the Ping method")
 //			},
@@ -44,6 +47,9 @@ var _ storage.Storager = &StoragerMock{}
 //
 //	}
 type StoragerMock struct {
+	// MarkDeletedUserStringFunc mocks the MarkDeletedUserString method.
+	MarkDeletedUserStringFunc func(ctx context.Context, userID string, key string) error
+
 	// PingFunc mocks the Ping method.
 	PingFunc func() error
 
@@ -64,6 +70,15 @@ type StoragerMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// MarkDeletedUserString holds details about calls to the MarkDeletedUserString method.
+		MarkDeletedUserString []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// UserID is the userID argument value.
+			UserID string
+			// Key is the key argument value.
+			Key string
+		}
 		// Ping holds details about calls to the Ping method.
 		Ping []struct {
 		}
@@ -99,12 +114,53 @@ type StoragerMock struct {
 			Us storage.UserString
 		}
 	}
-	lockPing                sync.RWMutex
-	lockRetrieve            sync.RWMutex
-	lockRetrieveUserStrings sync.RWMutex
-	lockSave                sync.RWMutex
-	lockSaveList            sync.RWMutex
-	lockSaveUserString      sync.RWMutex
+	lockMarkDeletedUserString sync.RWMutex
+	lockPing                  sync.RWMutex
+	lockRetrieve              sync.RWMutex
+	lockRetrieveUserStrings   sync.RWMutex
+	lockSave                  sync.RWMutex
+	lockSaveList              sync.RWMutex
+	lockSaveUserString        sync.RWMutex
+}
+
+// MarkDeletedUserString calls MarkDeletedUserStringFunc.
+func (mock *StoragerMock) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	if mock.MarkDeletedUserStringFunc == nil {
+		panic("StoragerMock.MarkDeletedUserStringFunc: method is nil but Storager.MarkDeletedUserString was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		UserID string
+		Key    string
+	}{
+		Ctx:    ctx,
+		UserID: userID,
+		Key:    key,
+	}
+	mock.lockMarkDeletedUserString.Lock()
+	mock.calls.MarkDeletedUserString = append(mock.calls.MarkDeletedUserString, callInfo)
+	mock.lockMarkDeletedUserString.Unlock()
+	return mock.MarkDeletedUserStringFunc(ctx, userID, key)
+}
+
+// MarkDeletedUserStringCalls gets all the calls that were made to MarkDeletedUserString.
+// Check the length with:
+//
+//	len(mockedStorager.MarkDeletedUserStringCalls())
+func (mock *StoragerMock) MarkDeletedUserStringCalls() []struct {
+	Ctx    context.Context
+	UserID string
+	Key    string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		UserID string
+		Key    string
+	}
+	mock.lockMarkDeletedUserString.RLock()
+	calls = mock.calls.MarkDeletedUserString
+	mock.lockMarkDeletedUserString.RUnlock()
+	return calls
 }
 
 // Ping calls PingFunc.

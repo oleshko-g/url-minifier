@@ -22,3 +22,13 @@ var SelectUserStrings string
 //
 //go:embed insertUserString.sql
 var InsertUserString string
+
+// UpdateStringDeletedAt
+//
+//go:embed updateStringDeletedAt.sql
+var UpdateStringDeletedAt string
+
+// SelectUserString returns user_id by string id
+//
+//go:embed selectUserString.sql
+var SelectUserString string

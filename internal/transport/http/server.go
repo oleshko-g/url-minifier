@@ -495,16 +495,16 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 		}
 		var minifiedIDs []string
 		d := json.NewDecoder(req.Body)
-		for d.More() {
-			var minifiedID string
-			err = d.Decode(&s)
-			if err != nil {
+		var minifiedID string
+		err = d.Decode(&minifiedIDs)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
 				responseWithError(res, err, http.StatusBadRequest)
 				s.logger.Error(err.Error())
 				return
 			}
-			minifiedIDs = append(minifiedIDs, minifiedID)
 		}
+		minifiedIDs = append(minifiedIDs, minifiedID)
 
 		ctx := req.Context()
 		s.Service.DeleteUserURLs(ctx, userID, minifiedIDs)
@@ -512,8 +512,6 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 		res.WriteHeader(http.StatusAccepted)
 	}
 }
-
-type deleteUserURLsRequest []string
 
 type (
 	userURLsHandlerResponse []userURLsResponseItem

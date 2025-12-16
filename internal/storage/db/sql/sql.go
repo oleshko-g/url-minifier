@@ -182,3 +182,47 @@ func (s *Storage) SaveList(values []map[string]string) error {
 	// TODL: write the implementation
 	return nil
 }
+
+func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	var err error
+
+	dus, err := s.retrieveUserString(ctx, key)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = fmt.Errorf("%w: by key \"%s\"", storageErrors.ErrNotFound, key)
+		return storageErrors.ErrNotFound
+	}
+
+	if userID != dus.UserID {
+		err = fmt.Errorf("%w: userID \"%s\" %s", storageErrors.ErrAccessDenied, userID, "isn't the owner of data")
+		return err
+	}
+
+	if dus.DeletedAt != nil {
+		// already marked as deleted
+		if time.Now().After(*dus.DeletedAt) {
+			return nil
+		}
+	}
+
+	err = s.updateStringDeletedAt(ctx, key, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) retrieveUserString(ctx context.Context, key string) (dbUserString schema.UserString, err error) {
+	row := s.db.QueryRowContext(ctx, query.SelectUserString, key)
+
+	err = row.Scan(&dbUserString.UserID, &dbUserString.Value, &dbUserString.DeletedAt)
+	if err != nil {
+		return schema.UserString{}, err
+	}
+	return dbUserString, nil
+}
+
+func (s *Storage) updateStringDeletedAt(ctx context.Context, key string, t time.Time) error {
+	row := s.db.QueryRowContext(ctx, query.UpdateStringDeletedAt, key, t)
+	return row.Err()
+}

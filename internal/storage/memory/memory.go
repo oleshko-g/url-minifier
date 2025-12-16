@@ -144,3 +144,8 @@ func (s *strRecords) String() string {
 	defer s.mux.RUnlock()
 	return fmt.Sprint(s.userKeys)
 }
+
+func (s *strRecords) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	_, _, _ = ctx, userID, key
+	return nil
+}

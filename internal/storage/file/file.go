@@ -232,3 +232,8 @@ const (
 	// Write Read _, Read _ _, Read _ _
 	filePerm os.FileMode = 0o644
 )
+
+func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	_, _, _ = ctx, userID, key
+	return nil
+}
