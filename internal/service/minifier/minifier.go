@@ -131,10 +131,22 @@ func (s *Service) newURL(id, originalURL string) URL {
 // DeleteUserURLs takes userID and a slice of minified IDs and markes as deleted the associated minified URLs
 func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
 	ctx := context.Background()
+	var successCh = make(chan struct{}, len(minifiedIDs))
+	var errCh = make(chan error, len(minifiedIDs))
 	for _, mID := range minifiedIDs {
-		err := s.storage.MarkDeletedUserString(ctx, userID, mID)
-		if err != nil {
+		go func() {
+			errCh <- s.storage.MarkDeletedUserString(ctx, userID, mID)
+			successCh <- struct{}{}
+		}()
+	}
+
+	for i := 0; i < len(minifiedIDs); i++ {
+		select {
+		case err := <-errCh:
 			return err
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-successCh:
 		}
 	}
 	return nil
