@@ -183,6 +183,7 @@ func (s *Storage) SaveList(values []map[string]string) error {
 	return nil
 }
 
+// MarkDeletedUserString sets deleted_at. If the user isn't the ownder it returns [storageErrors.AccessDenifed]
 func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
 	var err error
 
@@ -224,6 +225,7 @@ func (s *Storage) updateStringDeletedAt(ctx context.Context, key string, t time.
 	return row.Err()
 }
 
+// RetrieveUserString is the sql implementation
 func (s *Storage) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
 	dus, err := s.retrieveUserString(ctx, key)
 	if err != nil {

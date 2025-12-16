@@ -152,6 +152,7 @@ func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
 	return nil
 }
 
+// UnMinifyUserURL takes an id of a user string and returned its value and if it's deleted
 func (s *Service) UnMinifyUserURL(ctx context.Context, id string) (value string, isDeleted bool, err error) {
 	dus, err := s.storage.RetrieveUserString(ctx, id)
 	if err != nil {

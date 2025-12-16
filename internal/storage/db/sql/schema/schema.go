@@ -34,12 +34,14 @@ func Up(d db.DriverName, database *sql.DB) error {
 	return nil
 }
 
+// UserString is the struct to scan data from SQL queries to strings table
 type UserString struct {
 	UserID    string
 	Value     string
 	DeletedAt *time.Time
 }
 
+// IsDeleted reports if a value's deleted_at field is in the past so it's marked as deleted
 func (us UserString) IsDeleted() bool {
 	if us.DeletedAt != nil {
 		if time.Now().After(*us.DeletedAt) {

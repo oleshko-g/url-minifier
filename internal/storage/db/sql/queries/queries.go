@@ -23,7 +23,7 @@ var SelectUserStrings string
 //go:embed insertUserString.sql
 var InsertUserString string
 
-// UpdateStringDeletedAt
+// UpdateStringDeletedAt is the SQL statement to set delete_at for a string by its id
 //
 //go:embed updateStringDeletedAt.sql
 var UpdateStringDeletedAt string

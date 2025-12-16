@@ -233,11 +233,15 @@ const (
 	filePerm os.FileMode = 0o644
 )
 
+// MarkDeletedUserString is the file implementation
+//
+// TODO: retrieve a value, set deletedAt is it's not
 func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
 	_, _, _ = ctx, userID, key
 	return nil
 }
 
+// RetrieveUserString is the file implementation
 func (f *File) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
 	_, _ = ctx, key
 	return storage.UserString{}, nil
