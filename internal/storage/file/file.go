@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
@@ -50,9 +51,19 @@ func (f *File) Ping() error {
 }
 
 type record struct {
-	UserID string `json:"user_id"`
-	Key    string `json:"key"`
-	Value  string `json:"value"`
+	UserID     string     `json:"user_id"`
+	Key        string     `json:"key"`
+	Value      string     `json:"value"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  *time.Time `json:"updated_at"`
+	DeletedtAt *time.Time `json:"deleted_at"`
+}
+
+func (r record) isDeleted() bool {
+	if r.DeletedtAt == nil {
+		return false
+	}
+	return time.Now().UTC().After(*r.DeletedtAt)
 }
 
 // Save saves the value under the key or return an error if key already exists
@@ -243,6 +254,31 @@ func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key str
 
 // RetrieveUserString is the file implementation
 func (f *File) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
-	_, _ = ctx, key
-	return storage.UserString{}, nil
+	_ = ctx
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	rr, err := f.newRecordReader()
+	if err != nil {
+		return storage.UserString{}, err
+	}
+	for {
+		var fr record
+		err = rr.decoder.Decode(&fr)
+		if fr.Key == key {
+			return storage.UserString{UserID: fr.UserID,
+				Key:     fr.Key,
+				Value:   fr.Value,
+				Deleted: fr.isDeleted(),
+			}, nil
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+
+				return storage.UserString{}, storageErrors.ErrNotFound
+			}
+			return storage.UserString{}, err
+		}
+	}
 }
