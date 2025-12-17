@@ -511,7 +511,12 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 			}
 		}
 
-		go s.Service.DeleteUserURLs(userID, minifiedIDs)
+		go func() {
+			err := s.Service.DeleteUserURLs(userID, minifiedIDs)
+			if err != nil {
+				s.logger.Error(err.Error())
+			}
+		}()
 
 		res.WriteHeader(http.StatusAccepted)
 	}
