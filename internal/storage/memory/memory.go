@@ -40,16 +40,24 @@ type (
 	user string
 	key  = string
 
-	userKeys = map[user][]userKey
-	values   = map[key]string
+	userKeys = map[user][]key
+	values   = map[key]strValue
 
-	userKey struct {
-		key
+	strValue struct {
+		userID    user
+		str       string
 		createdAt time.Time
-		updatedAt time.Time
+		updatedAt *time.Time
 		deletedAt *time.Time
 	}
 )
+
+func (v strValue) isDeleted() bool {
+	if v.deletedAt == nil {
+		return false
+	}
+	return time.Now().UTC().After(*v.deletedAt)
+}
 
 var _ storage.Storager = (*strRecords)(nil)
 
@@ -60,13 +68,13 @@ func (s *strRecords) Save(key, value string) error {
 	return nil
 }
 
-func (s *strRecords) save(key, value string) error {
+func (s *strRecords) save(key, v string) error {
 	_, ok := s.values[key]
 	if ok {
 		return storageErrors.ErrAlreadyExists
 	}
 
-	s.values[key] = value
+	s.values[key] = strValue{str: v, createdAt: time.Now().UTC(), updatedAt: nil, deletedAt: nil}
 	return nil
 }
 
@@ -77,23 +85,27 @@ func (s *strRecords) SaveUserString(ctx context.Context, us storage.UserString) 
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if err := s.save(us.Key, us.Value); err != nil {
-		if errors.Is(err, storageErrors.ErrAlreadyExists) {
-			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
-		}
-		return err
+	err := s.saveUserString(user(us.UserID), us.Key, us.Value)
+	if errors.Is(err, storageErrors.ErrAlreadyExists) {
+		slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
 	}
 
-	urs := s.userKeys[user(us.UserID)]
-	urs = append(urs, userKey{
-		key:       us.Key,
+	return nil
+}
+
+func (s *strRecords) saveUserString(u user, k key, str string) error {
+	if _, ok := s.values[k]; ok {
+		return storageErrors.ErrAlreadyExists
+	}
+
+	s.values[k] = strValue{
+		userID:    u,
+		str:       str,
 		createdAt: time.Now().UTC(),
-		updatedAt: time.Now().UTC(),
-		deletedAt: nil,
-	})
+	}
 
-	s.userKeys[user(us.UserID)] = urs
-
+	uks := s.userKeys[u]
+	s.userKeys[u] = append(uks, k)
 	return nil
 }
 
@@ -113,7 +125,7 @@ func (s *strRecords) Retrieve(key string) (value string, err error) {
 	if !ok {
 		return "", storageErrors.ErrNotFound
 	}
-	return v, nil
+	return v.str, nil
 }
 
 func (s *strRecords) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
@@ -122,19 +134,18 @@ func (s *strRecords) RetrieveUserStrings(ctx context.Context, userID string) ([]
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 
-	urs, ok := s.userKeys[user(userID)]
+	uks, ok := s.userKeys[user(userID)]
 	if !ok {
 		return []storage.UserString{}, nil
 	}
 
 	var uss []storage.UserString
-	for _, ur := range urs {
-		us := storage.UserString{
-			UserID: userID,
-			Key:    ur.key,
-			Value:  s.values[ur.key],
+	for _, uk := range uks {
+		v, err := s.retrieveUserString(uk)
+		if err != nil {
+			return nil, err
 		}
-		uss = append(uss, us)
+		uss = append(uss, v)
 	}
 	return uss, nil
 }
@@ -151,6 +162,23 @@ func (s *strRecords) MarkDeletedUserString(ctx context.Context, userID string, k
 }
 
 func (s *strRecords) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
-	_, _ = ctx, key
-	return storage.UserString{}, nil
+	_ = ctx
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+
+	return s.retrieveUserString(key)
+}
+
+func (s *strRecords) retrieveUserString(k key) (storage.UserString, error) {
+	v, ok := s.values[k]
+	if !ok {
+		return storage.UserString{}, storageErrors.ErrNotFound
+	}
+
+	return storage.UserString{
+		UserID:  string(v.userID),
+		Key:     k,
+		Value:   v.str,
+		Deleted: v.isDeleted(),
+	}, nil
 }

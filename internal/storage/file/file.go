@@ -92,7 +92,7 @@ func (f *File) save(key, value string) error {
 		return storageErrors.ErrAlreadyExists
 	}
 
-	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
+	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value, CreatedAt: time.Now().UTC()})
 }
 
 // SaveUserString appends a [storage.UserString] to the file storage
@@ -213,37 +213,6 @@ func (f *File) retrieveUserStrings(userID string) (key, value string, err error)
 	return "", "", nil
 }
 
-type recordReader struct {
-	file    *os.File
-	decoder *json.Decoder
-}
-
-func (f *File) newRecordReader() (*recordReader, error) {
-	fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
-	if err != nil {
-		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm): %s", err.Error()))
-		return nil, err
-	}
-
-	dep := json.NewDecoder(fp)
-
-	return &recordReader{
-		file:    fp,
-		decoder: dep,
-	}, nil
-}
-
-// defaults
-const (
-	DefaultFilepath path = "minifiedURLs.json"
-)
-
-// UNIX permissions
-const (
-	// Write Read _, Read _ _, Read _ _
-	filePerm os.FileMode = 0o644
-)
-
 // MarkDeletedUserString is the file implementation
 //
 // TODO: retrieve a value, set deletedAt is it's not
@@ -282,3 +251,34 @@ func (f *File) RetrieveUserString(ctx context.Context, key string) (storage.User
 		}
 	}
 }
+
+type recordReader struct {
+	file    *os.File
+	decoder *json.Decoder
+}
+
+func (f *File) newRecordReader() (*recordReader, error) {
+	fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm)
+	if err != nil {
+		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(f.p.Name(), os.O_RDONLY|os.O_CREATE, filePerm): %s", err.Error()))
+		return nil, err
+	}
+
+	dep := json.NewDecoder(fp)
+
+	return &recordReader{
+		file:    fp,
+		decoder: dep,
+	}, nil
+}
+
+// defaults
+const (
+	DefaultFilepath path = "minifiedURLs.json"
+)
+
+// UNIX permissions
+const (
+	// Write Read _, Read _ _, Read _ _
+	filePerm os.FileMode = 0o644
+)
