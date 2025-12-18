@@ -8,6 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql"
 	"github.com/oleshko-g/url-minifier/internal/storage/file"
@@ -30,7 +31,7 @@ type app struct {
 	fileConfig     file.Config
 	minifierConfig minifier.Config
 	httpConfig     http.Config
-	minifier.Storager
+	storage.Storager
 	*minifier.Service
 	*http.Server
 }
@@ -97,6 +98,7 @@ func (a *app) setup() (err error) {
 		a.Storager = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	}
+
 	if err != nil {
 		return err
 	}

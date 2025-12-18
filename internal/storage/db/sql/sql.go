@@ -2,6 +2,7 @@
 package sql
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,16 +10,40 @@ import (
 	"time"
 
 	_ "github.com/lib/pq" // revive:disable-line:blank-imports registers the postgres driver
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
 	query "github.com/oleshko-g/url-minifier/internal/storage/db/sql/queries"
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql/schema"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
+// New configures and open a new connection to the db and returns a [Storage] or an error
+func New(c *db.Config) (s *Storage, err error) {
+	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = schema.Up(c.DSN().DriverName, database); err != nil {
+		return
+	}
+
+	return &Storage{
+		db: database,
+	}, nil
+}
+
 // Storage represents an internal implementation of [sql.DB]
 type Storage struct {
 	db *sql.DB
 }
+
+var _ storage.Storager = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {
@@ -26,6 +51,8 @@ func (s *Storage) Ping() error {
 }
 
 // Save inserts value under key into the underlying db
+//
+// TODO: add tests
 func (s *Storage) Save(key, value string) (err error) {
 	err = s.save(key, value)
 	if err != nil {
@@ -44,6 +71,44 @@ func (s *Storage) save(key, value string) error {
 	)
 
 	err := row.Scan(&key, &value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return storageErrors.ErrAlreadyExists
+		}
+		return err
+	}
+
+	return nil
+}
+
+// SaveUserString saves a [storage.UserString] in the database
+func (s *Storage) SaveUserString(ctx context.Context, us storage.UserString) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	err := s.saveUserString(ctx, us)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) saveUserString(ctx context.Context, us storage.UserString) error {
+	row := s.db.QueryRowContext(ctx,
+		query.InsertUserString,
+		us.UserID,
+		us.Key,
+		us.Value,
+		sql.Named("created_at", time.Now().UTC()),
+		sql.NullTime{},
+		sql.NullTime{},
+	)
+
+	err := row.Scan(&us.Key, &us.Value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return storageErrors.ErrAlreadyExists
@@ -74,6 +139,41 @@ func (s *Storage) retrieve(key string) (value string, err error) {
 	return value, nil
 }
 
+// RetrieveUserStrings takes userID and return a slice of [storage.UserString]'s
+//
+// TODO: add test
+func (s *Storage) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	var err error
+
+	if userID == "" {
+		err = fmt.Errorf("%w: %s", storageErrors.ErrEmptyParameter, "userID")
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, query.SelectUserStrings, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var uss []storage.UserString
+	for rows.Next() {
+		var us storage.UserString
+		err := rows.Scan(&us.UserID, &us.Key, &us.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		uss = append(uss, us)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return uss, nil
+}
+
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
 //
 // TODO: add tests
@@ -83,23 +183,59 @@ func (s *Storage) SaveList(values []map[string]string) error {
 	return nil
 }
 
-// New configures and open a new connection to the db and returns a [Storage] or an error
-func New(c *db.Config) (s *Storage, err error) {
-	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())
+// MarkDeletedUserString sets deleted_at. If the user isn't the ownder it returns [storageErrors.AccessDenifed]
+func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	var err error
+
+	dus, err := s.retrieveUserString(ctx, key)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = fmt.Errorf("%w: by key \"%s\"", storageErrors.ErrNotFound, key)
+		return err
+	}
+
+	if userID != dus.UserID {
+		err = fmt.Errorf("%w: userID \"%s\" %s", storageErrors.ErrAccessDenied, userID, "isn't the owner of data")
+		return err
+	}
+
+	if dus.IsDeleted() {
+		return nil
+	}
+
+	err = s.updateStringDeletedAt(ctx, key, time.Now().UTC())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = database.Ping()
+	return nil
+}
+
+func (s *Storage) retrieveUserString(ctx context.Context, key string) (dbUserString schema.UserString, err error) {
+	row := s.db.QueryRowContext(ctx, query.SelectUserString, key)
+
+	err = row.Scan(&dbUserString.UserID, &dbUserString.Value, &dbUserString.DeletedAt)
 	if err != nil {
-		return nil, err
+		return schema.UserString{}, err
+	}
+	return dbUserString, nil
+}
+
+func (s *Storage) updateStringDeletedAt(ctx context.Context, key string, t time.Time) error {
+	row := s.db.QueryRowContext(ctx, query.UpdateStringDeletedAt, key, t)
+	return row.Err()
+}
+
+// RetrieveUserString is the sql implementation
+func (s *Storage) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	dus, err := s.retrieveUserString(ctx, key)
+	if err != nil {
+		return storage.UserString{}, err
 	}
 
-	if err = schema.Up(c.DSN().DriverName, database); err != nil {
-		return
-	}
-
-	return &Storage{
-		db: database,
+	return storage.UserString{
+		UserID:  dus.UserID,
+		Key:     key,
+		Value:   dus.Value,
+		Deleted: dus.IsDeleted(),
 	}, nil
 }

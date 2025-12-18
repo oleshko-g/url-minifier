@@ -1,5 +1,5 @@
 // Package http is an internal [http.Server] implementation
-package http
+package http //revive:disable-line:var-naming
 
 import (
 	"errors"
@@ -122,11 +122,9 @@ func parseQualityValue(s string) (float64, error) {
 
 	parsedFloat, err := strconv.ParseFloat(s, 32)
 	if err != nil {
-		defer func() { _ = parsedFloat }()
 		return 0.0, errQualityValueParseFloat
 	}
-	if parsedFloat < 0.0 && parsedFloat < 1.0 {
-		defer func() { _ = parsedFloat }()
+	if parsedFloat < 0.0 || parsedFloat > 1.0 {
 		return 0.0, errQualityValueOutOfRange
 	}
 	return parsedFloat, nil

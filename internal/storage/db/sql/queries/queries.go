@@ -12,3 +12,23 @@ var InsertString string
 //
 //go:embed selectString.sql
 var SelectString string
+
+// SelectUserStrings is the SQL statement to select all string by user_id from a db
+//
+//go:embed selectUserStrings.sql
+var SelectUserStrings string
+
+// InsertUserString is the SQL statement to select all string by user_id from a db
+//
+//go:embed insertUserString.sql
+var InsertUserString string
+
+// UpdateStringDeletedAt is the SQL statement to set delete_at for a string by its id
+//
+//go:embed updateStringDeletedAt.sql
+var UpdateStringDeletedAt string
+
+// SelectUserString returns user_id by string id
+//
+//go:embed selectUserString.sql
+var SelectUserString string

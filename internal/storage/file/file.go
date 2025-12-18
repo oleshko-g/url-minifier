@@ -2,6 +2,7 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +10,9 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
+	"github.com/oleshko-g/url-minifier/internal/storage"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
@@ -35,6 +38,8 @@ type File struct {
 	*Config
 }
 
+var _ storage.Storager = (*File)(nil)
+
 // Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {
 	return f.p.Close()
@@ -46,21 +51,32 @@ func (f *File) Ping() error {
 }
 
 type record struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	UserID     string     `json:"user_id"`
+	Key        string     `json:"key"`
+	Value      string     `json:"value"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  *time.Time `json:"updated_at"`
+	DeletedtAt *time.Time `json:"deleted_at"`
+}
+
+func (r record) isDeleted() bool {
+	if r.DeletedtAt == nil {
+		return false
+	}
+	return time.Now().UTC().After(*r.DeletedtAt)
 }
 
 // Save saves the value under the key or return an error if key already exists
 //
 // TODO: add tests
-func (f *File) Save(key, value string) (err error) {
+func (f *File) Save(key, value string) error {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	// TODO: sync every 100 ms instead of every write
 	// TODO: add in-memory storage and update on every Sync()
 	defer f.p.Sync()
 
-	err = f.save(key, value)
+	err := f.save(key, value)
 	if err != nil {
 		if errors.Is(err, storageErrors.ErrAlreadyExists) {
 			slog.Warn(fmt.Sprintf("key %s already exists", key))
@@ -68,15 +84,40 @@ func (f *File) Save(key, value string) (err error) {
 		}
 		return err
 	}
-	return
+	return nil
 }
 
-func (f *File) save(key, value string) (err error) {
-	if _, err = f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
+func (f *File) save(key, value string) error {
+	if _, err := f.retrieve(key); !errors.Is(err, storageErrors.ErrNotFound) {
 		return storageErrors.ErrAlreadyExists
 	}
 
-	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value})
+	return json.NewEncoder(f.p).Encode(record{Key: key, Value: value, CreatedAt: time.Now().UTC()})
+}
+
+// SaveUserString appends a [storage.UserString] to the file storage
+func (f *File) SaveUserString(ctx context.Context, us storage.UserString) error {
+	_ = ctx
+
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	err := f.saveUserString(us)
+	if err != nil {
+		if errors.Is(err, storageErrors.ErrAlreadyExists) {
+			slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (f *File) saveUserString(us storage.UserString) error {
+
+	if _, err := f.retrieve(us.Key); !errors.Is(err, storageErrors.ErrNotFound) {
+		return storageErrors.ErrAlreadyExists
+	}
+	return json.NewEncoder(f.p).Encode(record{UserID: us.UserID, Key: us.Key, Value: us.Value})
 }
 
 // SaveList saves the slice of minified URLs coupled with their original URLs or returns an error
@@ -130,6 +171,84 @@ func (f *File) retrieve(key string) (value string, err error) {
 		}
 		// set fr to zero value before the next Decode
 		fr = record{}
+	}
+}
+
+// RetrieveUserStrings takes userID and returns a slice of [storage.UserString]'s or an error
+func (f *File) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	_ = ctx
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	rr, err := f.newRecordReader()
+	if err != nil {
+		return nil, err
+	}
+	var urs []storage.UserString
+	for {
+		var fr record
+		err = rr.decoder.Decode(&fr)
+		if fr.UserID == userID {
+			urs = append(urs, storage.UserString{UserID: userID, Key: fr.Key, Value: fr.Value})
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				if len(urs) == 0 {
+					return nil, storageErrors.ErrNotFound
+				}
+
+				break
+			}
+
+			return nil, err
+		}
+	}
+
+	return urs, nil
+}
+
+func (f *File) retrieveUserStrings(userID string) (key, value string, err error) { //revive:disable-line:unused-parameter userID is used for comparison only
+
+	return "", "", nil
+}
+
+// MarkDeletedUserString is the file implementation
+//
+// TODO: retrieve a value, set deletedAt is it's not
+func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	_, _, _ = ctx, userID, key
+	return nil
+}
+
+// RetrieveUserString is the file implementation
+func (f *File) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	_ = ctx
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	rr, err := f.newRecordReader()
+	if err != nil {
+		return storage.UserString{}, err
+	}
+	for {
+		var fr record
+		err = rr.decoder.Decode(&fr)
+		if fr.Key == key {
+			return storage.UserString{UserID: fr.UserID,
+				Key:     fr.Key,
+				Value:   fr.Value,
+				Deleted: fr.isDeleted(),
+			}, nil
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+
+				return storage.UserString{}, storageErrors.ErrNotFound
+			}
+			return storage.UserString{}, err
+		}
 	}
 }
 

@@ -2,18 +2,27 @@
 package memory
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
+	"time"
 
-	"github.com/oleshko-g/url-minifier/internal/storage/errors"
+	"github.com/oleshko-g/url-minifier/internal/storage"
+	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
 // NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
 func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
-	return &strRecords{
-		mux: sync.RWMutex{},
-		m:   make(map[string]string),
+	uks := make(userKeys)
+	records := &strRecords{
+		mux:      sync.RWMutex{},
+		userKeys: uks,
+		values:   make(values),
 	}
+
+	return records
 }
 
 // Ping is no-op for [strRecords]
@@ -21,15 +30,82 @@ func (s *strRecords) Ping() error {
 	return nil
 }
 
-type strRecords struct {
-	mux sync.RWMutex
-	m   map[string]string
+type (
+	strRecords struct {
+		mux sync.RWMutex
+		userKeys
+		values
+	}
+
+	user string
+	key  = string
+
+	userKeys = map[user][]key
+	values   = map[key]strValue
+
+	strValue struct {
+		userID    user
+		str       string
+		createdAt time.Time
+		updatedAt *time.Time
+		deletedAt *time.Time
+	}
+)
+
+func (v strValue) isDeleted() bool {
+	if v.deletedAt == nil {
+		return false
+	}
+	return time.Now().UTC().After(*v.deletedAt)
 }
+
+var _ storage.Storager = (*strRecords)(nil)
 
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	s.m[key] = value
+	s.save(key, value)
+	return nil
+}
+
+func (s *strRecords) save(key, v string) error {
+	_, ok := s.values[key]
+	if ok {
+		return storageErrors.ErrAlreadyExists
+	}
+
+	s.values[key] = strValue{str: v, createdAt: time.Now().UTC(), updatedAt: nil, deletedAt: nil}
+	return nil
+}
+
+// // TODO: create userString struct, import, save in the map
+func (s *strRecords) SaveUserString(ctx context.Context, us storage.UserString) error {
+	_ = ctx
+
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	err := s.saveUserString(user(us.UserID), us.Key, us.Value)
+	if errors.Is(err, storageErrors.ErrAlreadyExists) {
+		slog.Warn(fmt.Sprintf("key %s already exists", us.Key))
+	}
+
+	return nil
+}
+
+func (s *strRecords) saveUserString(u user, k key, str string) error {
+	if _, ok := s.values[k]; ok {
+		return storageErrors.ErrAlreadyExists
+	}
+
+	s.values[k] = strValue{
+		userID:    u,
+		str:       str,
+		createdAt: time.Now().UTC(),
+	}
+
+	uks := s.userKeys[u]
+	s.userKeys[u] = append(uks, k)
 	return nil
 }
 
@@ -45,15 +121,64 @@ func (s *strRecords) SaveList(values []map[string]string) error {
 func (s *strRecords) Retrieve(key string) (value string, err error) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	v, ok := s.m[key]
+	v, ok := s.values[key]
 	if !ok {
-		return v, errors.ErrNotFound
+		return "", storageErrors.ErrNotFound
 	}
-	return v, nil
+	return v.str, nil
+}
+
+func (s *strRecords) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
+	_ = ctx
+
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+
+	uks, ok := s.userKeys[user(userID)]
+	if !ok {
+		return []storage.UserString{}, nil
+	}
+
+	var uss []storage.UserString
+	for _, uk := range uks {
+		v, err := s.retrieveUserString(uk)
+		if err != nil {
+			return nil, err
+		}
+		uss = append(uss, v)
+	}
+	return uss, nil
 }
 
 func (s *strRecords) String() string {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	return fmt.Sprint(s.m)
+	return fmt.Sprint(s.userKeys)
+}
+
+func (s *strRecords) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
+	_, _, _ = ctx, userID, key
+	return nil
+}
+
+func (s *strRecords) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
+	_ = ctx
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+
+	return s.retrieveUserString(key)
+}
+
+func (s *strRecords) retrieveUserString(k key) (storage.UserString, error) {
+	v, ok := s.values[k]
+	if !ok {
+		return storage.UserString{}, storageErrors.ErrNotFound
+	}
+
+	return storage.UserString{
+		UserID:  string(v.userID),
+		Key:     k,
+		Value:   v.str,
+		Deleted: v.isDeleted(),
+	}, nil
 }
