@@ -81,11 +81,27 @@ func (a *app) setup() (err error) {
 		a.httpConfig.Address().Source = "ENV"
 	}
 
+	if auditFile := os.Getenv("AUDIT_FILE"); auditFile != "" {
+		if err = a.httpConfig.AuditFile().Set(auditFile); err != nil {
+			return err
+		}
+		a.httpConfig.AuditFile().Source = "ENV"
+	}
+
+	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
+		if err = a.httpConfig.AuditFile().Set(auditURL); err != nil {
+			return err
+		}
+		a.httpConfig.AuditURL().Source = "ENV"
+	}
+
 	// sets flags
 	flag.Var(a.sqlConfig.DSN(), "d", "Set the sql db connection string")
 	flag.Var(a.fileConfig.Path(), "f", fmt.Sprintf("Default: `%s`. Set the file path for the file storage", file.DefaultFilepath))
 	flag.Var(a.minifierConfig.BaseURL(), "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
 	flag.Var(a.httpConfig.Address(), "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
+	flag.Var(a.httpConfig.AuditFile(), "audit-file", "Sets the file to write audit logs to")
+	flag.Var(a.httpConfig.AuditURL(), "audit-url", "Sets the URL to write audit logs to")
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {
