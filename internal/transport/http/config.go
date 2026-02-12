@@ -1,6 +1,7 @@
 package http //revive:disable-line:var-naming
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -108,6 +109,16 @@ type auditFile struct {
 	Source  string
 }
 
+func (a *auditFile) subscribe(ctx context.Context, cond *sync.Cond) error {
+	_, _ = ctx, cond
+	return nil
+}
+
+func (a *auditFile) write(ctx context.Context, event *auditEvent) error {
+	_, _ = ctx, event
+	return nil
+}
+
 // Set oprn or creates the audit file or returns an error
 func (a *auditFile) Set(s string) error {
 	// Write Read _, Read _ _, Read _ _
@@ -136,6 +147,16 @@ type auditURL struct {
 	url     *url.URL
 	enabled bool
 	Source  string
+}
+
+func (a *auditURL) subscribe(ctx context.Context, cond *sync.Cond) error {
+	_, _ = ctx, cond
+	return nil
+}
+
+func (a *auditURL) write(ctx context.Context, event *auditEvent) error {
+	_, _ = ctx, event
+	return nil
 }
 
 // Set parses s into a [url.URL] and sets it as the value of audit URL

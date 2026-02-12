@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 
 	"github.com/go-chi/chi"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
@@ -22,6 +23,8 @@ type Server struct {
 	Service
 	*Config
 	logger
+	auditors []observer
+	subjects []*sync.Cond
 }
 
 // Service is the expected URL minifier service
@@ -72,6 +75,14 @@ func NewServer(s Service, cp *Config) *Server {
 			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
 		})
 	})
+
+	if cp.auditFile.enabled {
+		srv.auditors = append(srv.auditors, &cp.auditFile)
+	}
+
+	if cp.auditURL.enabled {
+		srv.auditors = append(srv.auditors, &cp.auditURL)
+	}
 
 	srv.server.Handler = r
 
