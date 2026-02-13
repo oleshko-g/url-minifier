@@ -109,14 +109,13 @@ type auditFile struct {
 	Source  string
 }
 
-func (a *auditFile) subscribe(ctx context.Context, cond *sync.Cond) error {
-	_, _ = ctx, cond
+func (a *auditFile) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+	_, _ = ctx, channel
 	return nil
 }
 
-func (a *auditFile) write(ctx context.Context, event *auditEvent) error {
-	_, _ = ctx, event
-	return nil
+func (a *auditFile) Write(b []byte) (int, error) {
+	return a.fp.Write(b)
 }
 
 // Set oprn or creates the audit file or returns an error
@@ -149,14 +148,13 @@ type auditURL struct {
 	Source  string
 }
 
-func (a *auditURL) subscribe(ctx context.Context, cond *sync.Cond) error {
-	_, _ = ctx, cond
+func (a *auditURL) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+	_, _ = ctx, channel
 	return nil
 }
 
-func (a *auditURL) write(ctx context.Context, event *auditEvent) error {
-	_, _ = ctx, event
-	return nil
+func (a *auditURL) Write(b []byte) (int,error) {
+	return 0, nil
 }
 
 // Set parses s into a [url.URL] and sets it as the value of audit URL

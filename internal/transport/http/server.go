@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync"
 
 	"github.com/go-chi/chi"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
@@ -23,8 +22,8 @@ type Server struct {
 	Service
 	*Config
 	logger
-	auditors []observer
-	subjects []*sync.Cond
+	auditors    []subscriber
+	auditEvents []chan auditEvent
 }
 
 // Service is the expected URL minifier service

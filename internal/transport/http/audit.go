@@ -2,9 +2,8 @@ package http
 
 import (
 	"context"
-	"sync"
-
-	"github.com/google/uuid"
+	"io"
+	"net/http"
 )
 
 type auditEvent struct {
@@ -14,11 +13,16 @@ type auditEvent struct {
 	URL    string  `json:"url"`
 }
 
-type observer interface {
-	subscribe(context.Context, *sync.Cond) error
-	write(context.Context, *auditEvent) error
+type subscriber interface {
+	subscribe(context.Context, <-chan auditEvent) error
+	io.Writer
 }
 
-type subject interface {
-	publish(action string, userID *uuid.UUID) *sync.Cond
+type publisher interface {
+	publish(action string) (chan auditEvent, error)
+}
+
+type broadcaster interface {
+	broadcast(context.Context, chan<- auditEvent) error
+	http.ResponseWriter
 }
