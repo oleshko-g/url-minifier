@@ -50,8 +50,24 @@ func (a auditHandler) ServerHTTP(res http.ResponseWriter, req *http.Request) {
 	<-ctx.Done()
 }
 
-func (a *Server) register(auditor auditor, action string, h http.Handler) http.Handler {
-	return nil
+func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		req = req.WithContext(ctx)
+		s.auditChannels = append(s.auditChannels, make(chan auditEvent))
+		_ = context.AfterFunc(ctx, func() {
+			a := auditEvent{
+				Action: action,
+				TS:     time.Now().Unix(),
+				UserID: nil,
+				URL:    "",
+			}
+			l := len(s.auditChannels) - 1
+			s.auditChannels[l] <- a
+			slog.Debug(fmt.Sprintf("sent %+von s.auditChannels[l]", a))
+		})
+		h(res, req)
+	})
 }
 
 func (a auditHandler) broadcast(ctx context.Context, c chan<- auditEvent) error {
