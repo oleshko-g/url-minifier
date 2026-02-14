@@ -4,11 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/url"
-	"os"
 	"strings"
-	"sync"
 )
 
 // errParsingAdress indicates an error while parsing an address URL for an instance of http server
@@ -101,51 +98,6 @@ func (sec secret) String() string {
 func (sec *secret) Set(s string) error {
 	*sec = secret(s)
 	return nil
-}
-
-type auditFile struct {
-	fp      *os.File
-	mu      sync.Mutex
-	enabled bool
-	Source  string
-}
-
-func (a *auditFile) subscribe(ctx context.Context, channel <-chan auditEvent) error {
-	for {
-		select {
-		case <-ctx.Done():
-		case v := <-channel:
-			slog.Debug(fmt.Sprintf("read %+v from channel", v))
-		}
-	}
-}
-
-func (a *auditFile) Write(b []byte) (int, error) {
-	return a.fp.Write(b)
-}
-
-// Set oprn or creates the audit file or returns an error
-func (a *auditFile) Set(s string) error {
-	// Write Read _, Read _ _, Read _ _
-	const filePerm os.FileMode = 0o644
-
-	fp, err := os.OpenFile(s, os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
-	if err != nil {
-		return err
-	}
-
-	a.fp = fp
-	a.enabled = true
-	return nil
-}
-
-// String returns the name of the audit file
-func (a *auditFile) String() string {
-	if a.fp == nil {
-		return ""
-	}
-
-	return a.fp.Name()
 }
 
 type auditURL struct {

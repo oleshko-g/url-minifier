@@ -98,7 +98,7 @@ func (s *Server) ListenAndServe() error {
 	for _, auditor := range s.auditors {
 		for _, auditSubject := range s.auditSubjects {
 			go auditor.subscribe(ctx, auditSubject)
-			s.logger.Debug(fmt.Sprintf("subscribed auditor %+v to subject %+v", auditor, auditSubject))
+			s.logger.Info(fmt.Sprintf("subscribed auditor %+v to subject %+v", auditor, auditSubject))
 		}
 	}
 
@@ -228,7 +228,7 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 			return
 		}
 
-		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
+		s.logger.Info(fmt.Sprintf("Original URL: %s", url))
 
 		minifiedURL, err := s.Service.MinifyURL(ctx, userID, url.String())
 		statusCode := http.StatusCreated
@@ -242,7 +242,7 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 			statusCode = http.StatusConflict
 		}
 
-		s.logger.Debug(fmt.Sprintf("minifiedURL: %s", minifiedURL))
+		s.logger.Info(fmt.Sprintf("minifiedURL: %s", minifiedURL))
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
