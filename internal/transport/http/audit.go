@@ -3,7 +3,9 @@ package http
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
+	"time"
 )
 
 type auditEvent struct {
@@ -13,16 +15,56 @@ type auditEvent struct {
 	URL    string  `json:"url"`
 }
 
-type subscriber interface {
-	subscribe(context.Context, <-chan auditEvent) error
+const contextKeyOriginalURL contextKey = 2
+
+func originalURLFromCtx(ctx context.Context) (url string, ok bool) {
+	url, ok = ctx.Value(contextKeyOriginalURL).(string)
+	return url, ok
+}
+
+type auditor interface {
+	audit(context.Context, <-chan auditEvent) error
 	io.Writer
 }
 
-type publisher interface {
-	publish(action string) (chan auditEvent, error)
+type auditHandler struct {
+	h        http.Handler
+	action   string
+	auditors []auditor
+	c        chan<- auditEvent
 }
 
-type broadcaster interface {
+func (a auditHandler) ServerHTTP(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
+	_ = context.AfterFunc(ctx, func() {
+		if err := a.broadcast(ctx, a.c); err != nil {
+			slog.Error( err.Error())
+		}
+	})
+
+	req = req.WithContext(ctx)
+	a.h.ServeHTTP(res, req)
+	<-ctx.Done()
+}
+
+func (a *Server) register(auditor auditor, action string, h http.Handler) http.Handler {
+	return nil
+}
+
+func (a auditHandler) broadcast(ctx context.Context, c chan<- auditEvent) error {
+	userID, _ := userIDFromContext(ctx)
+	select {
+	case <-ctx.Done():
+		return nil
+	case c <- auditEvent{Action: a.action, TS: time.Now().Unix(), UserID: &userID, URL: ""}:
+	}
+	return nil
+}
+
+type auditSubject interface {
+	register(action string, h http.Handler) (chan auditEvent, error)
 	broadcast(context.Context, chan<- auditEvent) error
-	http.ResponseWriter
 }

@@ -22,8 +22,8 @@ type Server struct {
 	Service
 	*Config
 	logger
-	auditors    []subscriber
-	auditEvents []chan auditEvent
+	auditors      []auditor
+	auditChannels []chan auditEvent
 }
 
 // Service is the expected URL minifier service

@@ -109,7 +109,7 @@ type auditFile struct {
 	Source  string
 }
 
-func (a *auditFile) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+func (a *auditFile) audit(ctx context.Context, channel <-chan auditEvent) error {
 	_, _ = ctx, channel
 	return nil
 }
@@ -148,7 +148,7 @@ type auditURL struct {
 	Source  string
 }
 
-func (a *auditURL) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+func (a *auditURL) audit(ctx context.Context, channel <-chan auditEvent) error {
 	_, _ = ctx, channel
 	return nil
 }
