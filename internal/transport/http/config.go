@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"strings"
@@ -109,9 +110,14 @@ type auditFile struct {
 	Source  string
 }
 
-func (a *auditFile) audit(ctx context.Context, channel <-chan auditEvent) error {
-	_, _ = ctx, channel
-	return nil
+func (a *auditFile) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+	for {
+		select {
+		case <-ctx.Done():
+		case v := <-channel:
+			slog.Debug(fmt.Sprintf("read %+v from channel", v))
+		}
+	}
 }
 
 func (a *auditFile) Write(b []byte) (int, error) {
@@ -148,12 +154,12 @@ type auditURL struct {
 	Source  string
 }
 
-func (a *auditURL) audit(ctx context.Context, channel <-chan auditEvent) error {
+func (a *auditURL) subscribe(ctx context.Context, channel <-chan auditEvent) error {
 	_, _ = ctx, channel
 	return nil
 }
 
-func (a *auditURL) Write(b []byte) (int,error) {
+func (a *auditURL) Write(b []byte) (int, error) {
 	return 0, nil
 }
 

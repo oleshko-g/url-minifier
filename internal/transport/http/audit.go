@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -23,7 +24,7 @@ func originalURLFromCtx(ctx context.Context) (url string, ok bool) {
 }
 
 type auditor interface {
-	audit(context.Context, <-chan auditEvent) error
+	subscribe(context.Context, <-chan auditEvent) error
 	io.Writer
 }
 
@@ -39,22 +40,21 @@ func (a auditHandler) ServerHTTP(res http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 
+	req = req.WithContext(ctx)
 	_ = context.AfterFunc(ctx, func() {
 		if err := a.broadcast(ctx, a.c); err != nil {
-			slog.Error( err.Error())
+			slog.Error(err.Error())
 		}
 	})
 
-	req = req.WithContext(ctx)
 	a.h.ServeHTTP(res, req)
-	<-ctx.Done()
 }
 
-func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handler {
+func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.HandlerFunc {
+	s.auditSubjects = append(s.auditSubjects, make(chan auditEvent))
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		req = req.WithContext(ctx)
-		s.auditChannels = append(s.auditChannels, make(chan auditEvent))
 		_ = context.AfterFunc(ctx, func() {
 			a := auditEvent{
 				Action: action,
@@ -62,8 +62,8 @@ func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handl
 				UserID: nil,
 				URL:    "",
 			}
-			l := len(s.auditChannels) - 1
-			s.auditChannels[l] <- a
+			l := len(s.auditSubjects) - 1
+			s.auditSubjects[l] <- a
 			slog.Debug(fmt.Sprintf("sent %+von s.auditChannels[l]", a))
 		})
 		h(res, req)

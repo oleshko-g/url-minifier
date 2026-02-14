@@ -23,7 +23,7 @@ type Server struct {
 	*Config
 	logger
 	auditors      []auditor
-	auditChannels []chan auditEvent
+	auditSubjects []chan auditEvent
 }
 
 // Service is the expected URL minifier service
@@ -57,6 +57,8 @@ func NewServer(s Service, cp *Config) *Server {
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
+	srv.logger = slog.New(slog.Default().Handler())
+
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
 
@@ -65,10 +67,10 @@ func NewServer(s Service, cp *Config) *Server {
 		r.Use(srv.withEncodingMiddleware)
 		r.Use(srv.withAuthorization)
 
-		r.Get("/{id}", srv.unMinifyURLHandler())
-		r.Post("/", srv.authorized(srv.minifyURLHandler()))
+		r.Get("/{id}", srv.newAuditedHandler("follow", srv.unMinifyURLHandler()))
+		r.Post("/", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLHandler())))
 		r.Route("/api", func(r chi.Router) {
-			r.Post("/shorten", srv.authorized(srv.minifyURLJSONHandler()))
+			r.Post("/shorten", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLJSONHandler())))
 			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
 			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
 			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
@@ -85,15 +87,24 @@ func NewServer(s Service, cp *Config) *Server {
 
 	srv.server.Handler = r
 
-	srv.logger = slog.New(slog.Default().Handler())
-
 	return srv
 }
 
 // ListenAndServe starts underlying [http.Server]
 func (s *Server) ListenAndServe() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, auditor := range s.auditors {
+		for _, auditSubject := range s.auditSubjects {
+			go auditor.subscribe(ctx, auditSubject)
+			s.logger.Debug(fmt.Sprintf("subscribed auditor %+v to subject %+v", auditor, auditSubject))
+		}
+	}
+
 	s.server.Addr = s.Address().String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
+
 	return s.server.ListenAndServe()
 }
 
