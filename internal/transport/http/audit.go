@@ -1,12 +1,13 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -27,8 +28,7 @@ func originalURLFromCtx(ctx context.Context) (url string, ok bool) {
 }
 
 type auditor interface {
-	subscribe(context.Context, <-chan auditEvent) error
-	io.Writer
+	subscribe(context.Context, <-chan auditEvent)
 }
 
 type auditHandler struct {
@@ -85,9 +85,8 @@ func (a auditHandler) broadcast(ctx context.Context, c chan<- auditEvent) error 
 	return nil
 }
 
-type auditSubject interface {
-	register(action string, h http.Handler) (chan auditEvent, error)
-	broadcast(context.Context, chan<- auditEvent) error
+type originalURLer interface {
+	originalURL() string
 }
 
 type auditFile struct {
@@ -97,21 +96,17 @@ type auditFile struct {
 	Source  string
 }
 
-func (a *auditFile) subscribe(ctx context.Context, channel <-chan auditEvent) error {
+func (a *auditFile) subscribe(ctx context.Context, auditEvents <-chan auditEvent) {
 	for {
 		select {
 		case <-ctx.Done():
-		case v := <-channel:
-			err := json.NewEncoder(a.fp).Encode(v)
+		case auditEvent := <-auditEvents:
+			err := json.NewEncoder(a.fp).Encode(auditEvent)
 			if err != nil {
 				slog.Error(err.Error())
 			}
 		}
 	}
-}
-
-func (a *auditFile) Write(b []byte) (int, error) {
-	return a.fp.Write(b)
 }
 
 // Set oprn or creates the audit file or returns an error
@@ -136,4 +131,66 @@ func (a *auditFile) String() string {
 	}
 
 	return a.fp.Name()
+}
+
+type auditURL struct {
+	url     *url.URL
+	enabled bool
+	Source  string
+}
+
+func (a *auditURL) subscribe(ctx context.Context, auditEvent <-chan auditEvent) {
+	client := &http.Client{
+		Timeout: time.Second,
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+		case auditEvent := <-auditEvent:
+			auditEventData, err := json.Marshal(auditEvent)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+			r := bytes.NewReader(auditEventData)
+
+			ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+			req, err := http.NewRequestWithContext(ctx, "POST", a.url.String(), r)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+
+			res, err := client.Do(req)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+			res.Body.Close()
+			cancel()
+		}
+	}
+}
+
+func (a *auditURL) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+// Set parses s into a [url.URL] and sets it as the value of audit URL
+func (a *auditURL) Set(s string) error {
+	parsedURL, err := url.Parse(s)
+	if err != nil {
+		return err
+	}
+
+	a.url = parsedURL
+	a.enabled = true
+	return nil
+}
+
+// String return the opeque respresentation of an audit URL
+func (a *auditURL) String() string {
+	if a.url == nil {
+		return ""
+	}
+
+	return a.url.Opaque
 }

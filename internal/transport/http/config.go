@@ -1,7 +1,6 @@
 package http //revive:disable-line:var-naming
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -98,40 +97,4 @@ func (sec secret) String() string {
 func (sec *secret) Set(s string) error {
 	*sec = secret(s)
 	return nil
-}
-
-type auditURL struct {
-	url     *url.URL
-	enabled bool
-	Source  string
-}
-
-func (a *auditURL) subscribe(ctx context.Context, channel <-chan auditEvent) error {
-	_, _ = ctx, channel
-	return nil
-}
-
-func (a *auditURL) Write(b []byte) (int, error) {
-	return 0, nil
-}
-
-// Set parses s into a [url.URL] and sets it as the value of audit URL
-func (a *auditURL) Set(s string) error {
-	parsedURL, err := url.Parse(s)
-	if err != nil {
-		return err
-	}
-
-	a.url = parsedURL
-	a.enabled = true
-	return nil
-}
-
-// String return the opeque respresentation of an audit URL
-func (a *auditURL) String() string {
-	if a.url == nil {
-		return ""
-	}
-
-	return a.url.Opaque
 }
