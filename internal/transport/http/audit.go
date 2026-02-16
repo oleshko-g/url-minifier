@@ -57,10 +57,12 @@ func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handl
 	s.auditSubjects = append(s.auditSubjects, make(chan auditEvent))
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		req = req.WithContext(ctx)
-		userID, _ := userIDFromContext(ctx)
-		originURL, _ := originalURLFromCtx(ctx)
+		h(res, req)
+		ctx = req.Context()
+
 		_ = context.AfterFunc(ctx, func() {
+			userID, _ := userIDFromContext(ctx)
+			originURL, _ := originalURLFromCtx(ctx)
 			a := auditEvent{
 				Action: action,
 				TS:     time.Now().Unix(),
@@ -71,7 +73,6 @@ func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handl
 			s.auditSubjects[l] <- a
 			slog.Info(fmt.Sprintf("sent %+von s.auditChannels[l]", a))
 		})
-		h(res, req)
 	})
 }
 
@@ -83,10 +84,6 @@ func (a auditHandler) broadcast(ctx context.Context, c chan<- auditEvent) error 
 	case c <- auditEvent{Action: a.action, TS: time.Now().Unix(), UserID: &userID, URL: ""}:
 	}
 	return nil
-}
-
-type originalURLer interface {
-	originalURL() string
 }
 
 type auditFile struct {

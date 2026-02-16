@@ -244,6 +244,9 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 
 		s.logger.Info(fmt.Sprintf("minifiedURL: %s", minifiedURL))
 
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, url.String())
+		*req = *req.WithContext(ctx)
+
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
 		res.WriteHeader(statusCode)
@@ -273,6 +276,9 @@ func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 			res.WriteHeader(http.StatusGone)
 			return
 		}
+
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, url)
+		*req = *req.WithContext(ctx)
 
 		res.Header().Add("Location", url)
 		res.Header().Set("Content-Type", "text/plain")
@@ -338,14 +344,16 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 			s.logger.Error(err.Error())
 			return
 		}
+
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, reqBody.URL)
+		*req = *req.WithContext(ctx)
+
 		res.Header().Set("Content-Type", "application/json")
 		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
 		res.WriteHeader(statusCode)
 		res.Write([]byte(jsonData))
 	}
 }
-
-// func (s *Server)
 
 func responseWithError(res http.ResponseWriter, err error, statusCode int) {
 
