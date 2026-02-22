@@ -1,5 +1,5 @@
 // Package sql is the internal implementation of [database/sql]
-package sql
+package sql // revive:disable-line:var-naming see the package description.
 
 import (
 	"context"
@@ -41,6 +41,7 @@ func New(c *db.Config) (s *Storage, err error) {
 // Storage represents an internal implementation of [sql.DB]
 type Storage struct {
 	db *sql.DB
+	db.Config
 }
 
 var _ storage.Storager = (*Storage)(nil)
@@ -238,4 +239,45 @@ func (s *Storage) RetrieveUserString(ctx context.Context, key string) (storage.U
 		Value:   dus.Value,
 		Deleted: dus.IsDeleted(),
 	}, nil
+}
+
+// TearDown provide closes and drops the underlying sql DB.
+func (s *Storage) TearDown() error {
+	err := s.db.Close()
+	if err != nil {
+		return err
+	}
+
+	err = s.drop()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) drop() error {
+	postgesDB, err := newPostgresDB(s.Config)
+	defer func() { err = postgesDB.Close(); slog.Error(err.Error()) }()
+
+	s.db.Close()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	q := fmt.Sprintf("DROP DATABASE %s", s.DBName)
+	_, err = postgesDB.ExecContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func newPostgresDB(dbCfg db.Config) (*sql.DB, error) {
+	if dbCfg.DriverName != db.DriverNamePostgres {
+		return nil, storageErrors.ErrUnsupportedDataSource
+	}
+
+	return sql.Open(string(db.DriverNamePostgres), dbCfg.Host)
 }
