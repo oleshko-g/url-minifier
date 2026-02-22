@@ -105,7 +105,7 @@ func (a *app) setup() (err error) {
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {
-		a.Storager, err = sql.New(&a.sqlConfig)
+		a.Storager, err = sql.New(a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
 		a.Storager, err = file.New(&a.fileConfig)

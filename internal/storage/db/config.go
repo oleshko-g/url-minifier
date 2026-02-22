@@ -21,8 +21,8 @@ func (c *Config) DSN() *dataSource { // revive:disable-line:unexported-return pr
 type dataSource struct {
 	url string
 	DriverName
-	Host   string
-	DBName string
+	DefaultDSN string
+	DBName     string
 }
 
 // Set parses s and sets [DSN] and [Driver] or returns an error
@@ -39,8 +39,8 @@ func (d *dataSource) Set(s string) error {
 	*d = dataSource{
 		url:        s,
 		DriverName: DriverName(url.Scheme),
-		Host:       url.Host,
-		DBName:     url.Path,
+		DefaultDSN: defaultPostgesDSN(*url),
+		DBName:     url.Path[1:], // slice off the leading '/'
 	}
 
 	return nil
@@ -61,3 +61,8 @@ func (d DriverName) String() string {
 const (
 	DriverNamePostgres DriverName = "postgres"
 )
+
+func defaultPostgesDSN(url url.URL) string {
+	url.Path = string(DriverNamePostgres)
+	return url.String()
+}
