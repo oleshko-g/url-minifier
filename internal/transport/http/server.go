@@ -76,6 +76,7 @@ func NewServer(s Service, cp *Config) *Server {
 			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
 		})
 	})
+	r.Get("/debug/pprof/profile", pprof.Profile)
 
 	if cp.auditFile.enabled {
 		srv.auditors = append(srv.auditors, &cp.auditFile)
