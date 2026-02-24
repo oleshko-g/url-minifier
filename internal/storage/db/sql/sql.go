@@ -17,7 +17,6 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-
 // New configures and open a new connection to the db and returns a [Storage] or an error
 func New(dbCfg db.Config) (*Storage, error) {
 	db, err := connectDB(string(dbCfg.DriverName), dbCfg.DSN().String())
