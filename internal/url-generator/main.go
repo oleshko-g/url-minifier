@@ -12,14 +12,14 @@ type app struct {
 	method       string
 	url          string
 	headers      map[string][]string
-	currentState appState
-	stateMachine map[appState]appState
-	handlers     map[appState]handlerFunc
+	state
+	stateMachine map[state]state
+	handlers     map[state]handler
 }
 
 var a = app{
-	currentState: enteringMethod,
-	stateMachine: map[appState]appState{
+	state: enteringMethod,
+	stateMachine: map[state]state{
 		// currentState 			 // nextState
 		enteringMethod:        enteringPath,
 		enteringPath:          enteringHeaders,
@@ -28,7 +28,7 @@ var a = app{
 		enteringBodyPath:      enteringTargetsNumber,
 		enteringTargetsNumber: enteringMethod,
 	},
-	handlers: map[appState]handlerFunc{
+	handlers: map[state]handler{
 		// currentState 			 // handler
 		enteringMethod:        handleMethod,
 		enteringPath:          handlePath,
@@ -39,17 +39,17 @@ var a = app{
 	},
 }
 
-type handlerFunc func(input string) error
-type appState int
+
+type state int
 
 const (
 	// Initial state
-	enteringMethod        appState = 0
-	enteringPath          appState = 1
-	enteringHeaders       appState = 2
-	enteringBody          appState = 3
-	enteringBodyPath      appState = 4
-	enteringTargetsNumber appState = 5
+	enteringMethod        state = 0
+	enteringPath          state = 1
+	enteringHeaders       state = 2
+	enteringBody          state = 3
+	enteringBodyPath      state = 4
+	enteringTargetsNumber state = 5
 )
 
 func main() {
@@ -67,7 +67,7 @@ func main() {
 }
 
 func (a *app) prompt() {
-	switch a.currentState {
+	switch a.state {
 	case enteringMethod:
 		fmt.Print("Enter HTTP Method >")
 	case enteringPath:
@@ -84,9 +84,10 @@ func (a *app) prompt() {
 }
 
 func (a *app) setCurrentState() {
-	a.currentState = a.stateMachine[a.currentState]
+	a.state = a.stateMachine[a.state]
 }
 
+type handler func(input string) error
 func (a *app) handle(input string) error {
 	switch {
 
