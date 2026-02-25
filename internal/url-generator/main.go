@@ -12,13 +12,14 @@ type app struct {
 	method       string
 	url          string
 	headers      map[string][]string
-	currentState int
-	stateMachine map[int]int
+	currentState appState
+	stateMachine map[appState]appState
+	handlers     map[appState]handlerFunc
 }
 
 var a = app{
 	currentState: enteringMethod,
-	stateMachine: map[int]int{
+	stateMachine: map[appState]appState{
 		// currentState 			 // nextState
 		enteringMethod:        enteringPath,
 		enteringPath:          enteringHeaders,
@@ -27,16 +28,28 @@ var a = app{
 		enteringBodyPath:      enteringTargetsNumber,
 		enteringTargetsNumber: enteringMethod,
 	},
+	handlers: map[appState]handlerFunc{
+		// currentState 			 // handler
+		enteringMethod:        handleMethod,
+		enteringPath:          handlePath,
+		enteringHeaders:       handleHeaders,
+		enteringBody:          handleBody,
+		enteringBodyPath:      handleBodyPath,
+		enteringTargetsNumber: handleTargetsNumber,
+	},
 }
+
+type handlerFunc func(input string) error
+type appState int
 
 const (
 	// Initial state
-	enteringMethod = iota
-	enteringPath
-	enteringHeaders
-	enteringBody
-	enteringBodyPath
-	enteringTargetsNumber
+	enteringMethod        appState = 0
+	enteringPath          appState = 1
+	enteringHeaders       appState = 2
+	enteringBody          appState = 3
+	enteringBodyPath      appState = 4
+	enteringTargetsNumber appState = 5
 )
 
 func main() {
@@ -48,7 +61,8 @@ func main() {
 				slog.Error(err.Error())
 			}
 		}
-		a.setCurrentState(s.Text())
+		a.handle(s.Text())
+		a.setCurrentState()
 	}
 }
 
@@ -69,6 +83,37 @@ func (a *app) prompt() {
 	}
 }
 
-func (a *app) setCurrentState(input string) {
+func (a *app) setCurrentState() {
 	a.currentState = a.stateMachine[a.currentState]
+}
+
+func (a *app) handle(input string) error {
+	switch {
+
+	}
+	return nil
+}
+
+func handleMethod(input string) error {
+	return nil
+}
+
+func handlePath(input string) error {
+	return nil
+}
+
+func handleHeaders(input string) error {
+	return nil
+}
+
+func handleBody(input string) error {
+	return nil
+}
+
+func handleBodyPath(input string) error {
+	return nil
+}
+
+func handleTargetsNumber(input string) error {
+	return nil
 }
