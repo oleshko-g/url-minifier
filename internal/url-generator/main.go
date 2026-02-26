@@ -4,20 +4,25 @@ import (
 	"bufio"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
+	"strings"
 )
 
 type app struct {
-	targetsNum   int
-	method       string
-	url          string
-	headers      map[string][]string
 	state
 	stateMachine map[state]state
+	method       string
+	url          string
+	bodyPath     string
+	targetsNum   int
+	headers      map[string][]string
 	handlers     map[state]handler
 }
 
-var a = app{
+type handler func(a *app, input string) error
+
+var urlGen = app{
 	state: enteringMethod,
 	stateMachine: map[state]state{
 		// currentState 			 // nextState
@@ -33,12 +38,10 @@ var a = app{
 		enteringMethod:        handleMethod,
 		enteringPath:          handlePath,
 		enteringHeaders:       handleHeaders,
-		enteringBody:          handleBody,
 		enteringBodyPath:      handleBodyPath,
 		enteringTargetsNumber: handleTargetsNumber,
 	},
 }
-
 
 type state int
 
@@ -55,14 +58,14 @@ const (
 func main() {
 	s := bufio.NewScanner(os.Stdin)
 	for {
-		a.prompt()
+		urlGen.prompt()
 		if !s.Scan() {
 			if err := s.Err(); err != nil {
 				slog.Error(err.Error())
 			}
 		}
-		a.handle(s.Text())
-		a.setCurrentState()
+		urlGen.handle(s.Text())
+		urlGen.setCurrentState()
 	}
 }
 
@@ -84,37 +87,69 @@ func (a *app) prompt() {
 }
 
 func (a *app) setCurrentState() {
+	if a.method == "" {
+		return
+	}
+
+	if a.url == "" {
+		return
+	}
+
+	if a.headers == nil {
+		return
+	}
+
+	if a.bodyPath == "" {
+		return
+	}
+
 	a.state = a.stateMachine[a.state]
 }
 
-type handler func(input string) error
 func (a *app) handle(input string) error {
-	switch {
-
+	switch a.state {
+	case enteringMethod:
+		if err := handleMethod(a, input); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func handleMethod(input string) error {
+func handleMethod(a *app, input string) error {
+	switch input := strings.ToUpper(input); input {
+	case http.MethodPost:
+	default:
+		return fmt.Errorf("unsupported method")
+	}
+	a.method = input
 	return nil
 }
 
-func handlePath(input string) error {
+func handlePath(a *app, input string) error {
+	a.url = input
 	return nil
 }
 
-func handleHeaders(input string) error {
+func handleHeaders(a *app, input string) error {
+	h := strings.Split(input, ":")
+	header := h[0]
+	value := h[1]
+	a.headers[header] = append(a.headers[header], value)
 	return nil
 }
 
-func handleBody(input string) error {
+func handleBodyPath(a *app, input string) error {
+	a.bodyPath = input
 	return nil
 }
 
-func handleBodyPath(input string) error {
-	return nil
-}
-
-func handleTargetsNumber(input string) error {
+func handleTargetsNumber(a *app, input string) error {
+	fileName := fmt.Sprintf("vegeta targets %s %s", a.method, a.url)
+	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o655)
+	if err != nil {
+		return err
+	}
+	_ = f
 	return nil
 }
