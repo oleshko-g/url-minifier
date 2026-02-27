@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"net/http/pprof"
 	"strconv"
 
 	"github.com/go-chi/chi"
