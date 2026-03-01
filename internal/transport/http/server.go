@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
-	"net/url"
 	"net/http/pprof"
+	"net/url"
 	"strconv"
 
 	"github.com/go-chi/chi"
@@ -78,6 +78,7 @@ func NewServer(s Service, cp *Config) *Server {
 		})
 	})
 	r.Get("/debug/pprof/profile", pprof.Profile)
+	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
 
 	if cp.auditFile.enabled {
 		srv.auditors = append(srv.auditors, &cp.auditFile)
