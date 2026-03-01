@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,12 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	urlGen "github.com/oleshko-g/url-minifier/internal/url-generator/internal/url-generator"
+	urlGen "github.com/oleshko-g/url-minifier/internal/vegeta-target-generator/internal/url-generator"
 )
 
 type app struct {
 	state
 	stateMachine    map[state]state
+	authrity        string
 	host            string
 	port            string
 	method          string
@@ -29,6 +31,7 @@ type app struct {
 }
 
 const (
+	defaultAuthority   = `http://`
 	defaultHost        = `localhost`
 	defaultPort        = `8080`
 	defaultTargetsPath = `./testdata/vegeta-targets/`
@@ -70,9 +73,10 @@ var targetGenerator = app{
 		creatingTargetsDir:    handleCreatingTargetsDir,
 		creatingTargets:       handleCreatingTargets,
 	},
-	host:    defaultHost,
-	port:    defaultPort,
-	headers: make(map[string][]string),
+	authrity: defaultAuthority,
+	host:     defaultHost,
+	port:     defaultPort,
+	headers:  make(map[string][]string),
 }
 
 func main() {
@@ -120,11 +124,13 @@ func (a *app) handle(input string) error {
 }
 
 func handleMethod(a *app, input string) error {
-	switch input := strings.ToUpper(input); input {
+	input = strings.ToUpper(input)
+	switch input {
 	case http.MethodPost:
 	default:
 		return fmt.Errorf("unsupported method")
 	}
+
 	a.method = input
 	a.setCurrentState()
 	return nil
@@ -175,8 +181,13 @@ func handleTargetsNumber(a *app, input string) error {
 }
 
 func handleCreatingTargetsDir(a *app, _ string) error {
-	targetsDirPath := path.Join(defaultTargetsPath, fmt.Sprintf("%s-%s", a.method, a.uri))
-	err := os.MkdirAll(targetsDirPath, defaultDirPerms)
+	targetsDirPath := path.Join(defaultTargetsPath, fmt.Sprintf("%s:%s", a.host, a.port), fmt.Sprintf("%s-%s", a.method, a.uri))
+	err := os.RemoveAll(defaultTargetsPath)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(targetsDirPath, defaultDirPerms)
 	if err != nil {
 		return err
 	}
@@ -187,12 +198,81 @@ func handleCreatingTargetsDir(a *app, _ string) error {
 }
 
 func handleCreatingTargets(a *app, _ string) error {
-	targetBuilder := &strings.Builder{}
-	if err := a.buildTargets(targetBuilder); err != nil {
+	var (
+		ctx, cancel   = context.WithCancel(context.Background())
+		errs          = make(chan error, a.targetsNumber)
+		targetBodies  = make(chan string, a.targetsNumber)
+		bodyFilePaths = make(chan string, a.targetsNumber)
+		targets       = make(chan string, a.targetsNumber)
+		urlGenerator  = urlGen.NewURLGenerator(2)
+		targetsFile   *os.File
+	)
+	defer cancel()
+
+	targetsFile, err := openFile(path.Join(a.targetsDirPath, "targets.txt"))
+	if err != nil {
 		return err
 	}
-	targets := targetBuilder.String()
-	_ = targets
+	defer targetsFile.Close()
+
+	for targetIdx := range a.targetsNumber {
+		go func() {
+			select {
+			case <-ctx.Done():
+				return
+			case targetBodies <- urlGenerator.Generate():
+			}
+		}()
+
+		go func() {
+			select {
+			case <-ctx.Done():
+				return
+			case body := <-targetBodies:
+				targetBodyFilePath := path.Join(a.targetsDirPath, fmt.Sprintf("target-%d-body.txt", targetIdx))
+				fp, err := openFile(targetBodyFilePath)
+				if err != nil {
+					errs <- err
+				}
+
+				if _, err = fp.Write([]byte(body)); err != nil {
+					errs <- err
+				}
+
+				bodyFilePaths <- fp.Name()
+			}
+		}()
+
+		go func() {
+			select {
+			case <-ctx.Done():
+				return
+			case bodyFilePath := <-bodyFilePaths:
+				targetBuilder := &strings.Builder{}
+				err = a.buildTarget(targetBuilder, bodyFilePath)
+				if err != nil {
+					errs <- err
+				}
+				targets <- targetBuilder.String()
+			}
+		}()
+
+		target := <-targets
+		_, err = targetsFile.Write([]byte(target))
+		if err != nil {
+			errs <- err
+		}
+
+	}
+
+	cancel()
+
+	select {
+	case err := <-errs:
+		cancel()
+		return err
+	case <-ctx.Done():
+	}
 
 	a.setCurrentState()
 	return nil
@@ -203,76 +283,54 @@ func (a *app) setCurrentState() {
 	a.state = nextState
 }
 
-func (a *app) generateTargets(number int) error {
-	return nil
-}
+func (a *app) buildTarget(builder *strings.Builder, bodyFilePath string) error {
+	// write first line
+	builder.WriteString(a.method)
+	builder.WriteRune(' ')
+	builder.WriteString(a.authrity)
+	builder.WriteString(a.host)
+	builder.WriteRune(':')
+	builder.WriteString(a.port)
+	builder.WriteString(a.uri)
+	builder.WriteRune('\n')
 
-func (a *app) setFile(name string) error {
-	fp, err := openFile(name)
-	if err != nil {
-		return err
-	}
+	// write headers
+	for header, values := range a.headers {
+		if len(values) == 0 {
+			continue
+		}
 
-	a.targetsFilePath = fp
-	return nil
-}
-
-func (a *app) buildTargets(builder *strings.Builder) error {
-	for targetIdx := range a.targetsNumber {
-		// write first line
-		builder.WriteString(a.method)
-		builder.WriteRune(' ')
-		builder.WriteString(a.host)
-		builder.WriteString(a.port)
-		builder.WriteString(a.uri)
-		builder.WriteRune('\n')
-
-		// write headers
-		for header, values := range a.headers {
-			if len(values) == 0 {
+		builder.WriteString(header)
+		builder.WriteString(": ")
+		for i, value := range values {
+			if value == "" {
 				continue
 			}
+			builder.WriteString(value)
 
-			builder.WriteString(header)
-			builder.WriteString(": ")
-			for i, value := range values {
-				if value == "" {
-					continue
-				}
-				builder.WriteString(value)
-
-				// if not the last value
-				if i+1 < len(values) {
-					builder.WriteString(", ")
-				}
+			// if not the last value
+			if i+1 < len(values) {
+				builder.WriteString(", ")
 			}
-			builder.WriteRune('\n')
 		}
-
-		targetBodyFilePath := path.Join(a.targetsFilePath.Name(), fmt.Sprintf("target-%d-body.txt", targetIdx))
-		fp, err := openFile(targetBodyFilePath)
-		if err != nil {
-			return err
-		}
-
-		bodyGen := urlGen.NewURLGenerator(fp, 2)
-		_, err = bodyGen.Write(bodyGen.Generate())
-		if err != nil {
-			return err
-		}
-
-		// write the path to the body
-		builder.WriteRune('@')
-		builder.WriteString(targetBodyFilePath)
-		builder.WriteRune('\n')
 		builder.WriteRune('\n')
 	}
+
+	if bodyFilePath != "" {
+		// write the path to the body
+		builder.WriteRune('@')
+		builder.WriteString(bodyFilePath)
+		builder.WriteRune('\n')
+	}
+
+	builder.WriteRune('\n')
 
 	return nil
 }
 
+// openFile creates or opens and truncates the named file for writing.
 func openFile(name string) (*os.File, error) {
-	fp, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o655)
+	fp, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0o655)
 	if err != nil {
 		return nil, err
 	}

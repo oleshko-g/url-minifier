@@ -4,7 +4,6 @@ import (
 	"bytes"
 	cryptoRand "crypto/rand"
 	"encoding/base64"
-	"io"
 	"math/rand"
 	"strings"
 	"sync"
@@ -12,10 +11,13 @@ import (
 
 const defaultURLPartLen = 2
 
-func NewURLGenerator(w io.WriteCloser, urlPartLen int) *urlGenerator {
+func NewURLGenerator(urlPartLen int) *urlGenerator {
+	if urlPartLen <= 0 {
+		urlPartLen = defaultURLPartLen
+	}
 	return &urlGenerator{
-		URLPartLen: defaultURLPartLen,
-		rBuf:       bytes.NewBuffer(make([]byte, defaultURLPartLen)),
+		URLPartLen: urlPartLen,
+		rBuf:       bytes.NewBuffer(make([]byte, urlPartLen)),
 	}
 }
 
