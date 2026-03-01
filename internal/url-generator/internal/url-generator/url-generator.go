@@ -2,37 +2,34 @@ package urlgenerator
 
 import (
 	"bytes"
+	cryptoRand "crypto/rand"
 	"encoding/base64"
 	"io"
 	"math/rand"
-	cryptoRand "crypto/rand"
 	"strings"
 	"sync"
 )
 
+const defaultURLPartLen = 2
+
 func NewURLGenerator(w io.WriteCloser, urlPartLen int) *urlGenerator {
 	return &urlGenerator{
-		rBuf:              bytes.NewBuffer(make([]byte, urlPartLen)),
-		defaultURLPartLen: 2,
-		w:                 w,
+		URLPartLen: defaultURLPartLen,
+		rBuf:       bytes.NewBuffer(make([]byte, defaultURLPartLen)),
 	}
 }
 
 type urlGenerator struct {
-	mu      sync.RWMutex
+	URLPartLen int
+
 	builder strings.Builder
 	rBuf    *bytes.Buffer
 
-	defaultURLPartLen int
-
-	w io.WriteCloser
+	mu sync.RWMutex
 }
 
-func (ug *urlGenerator) Write(b []byte) (int, error) {
-	return ug.w.Write(b)
-}
-
-func (ug *urlGenerator) Generate() []byte {
+// Generate returns a string which is a randomly generated URL
+func (ug *urlGenerator) Generate() string {
 	ug.mu.Lock()
 	defer ug.mu.Unlock()
 	defer ug.builder.Reset()
@@ -42,49 +39,43 @@ func (ug *urlGenerator) Generate() []byte {
 	ug.builder.WriteString("://")
 
 	// generate Host
-	ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+	ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 	ug.builder.WriteRune('.')
-	ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+	ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 
 	//generate a PathSegment?
 	for flipCoin() {
 		ug.builder.WriteRune('/')
-		ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+		ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 	}
 
 	if genrateQuery := flipCoin(); genrateQuery {
 		// generate the first Query
 		ug.builder.WriteRune('?')
 		//key
-		ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+		ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 		ug.builder.WriteRune('=')
 		//value
-		ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+		ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 
 		// generate another Query?
 		for flipCoin() {
 			ug.builder.WriteRune('&')
 			//key
-			ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+			ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 			ug.builder.WriteRune('=')
 			//value
-			ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+			ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 		}
 	}
 
 	// generate Fragment?
 	if flipCoin() {
 		ug.builder.WriteRune('#')
-		ug.builder.WriteString(ug.randomURLEncodedString(ug.defaultURLPartLen))
+		ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 	}
 
-	return []byte(ug.builder.String())
-}
-
-func (ug *urlGenerator) Close() error {
-	ug.mu.Lock()
-	defer ug.mu.Unlock()
-	return ug.w.Close()
+	return ug.builder.String()
 }
 
 func (ug *urlGenerator) randromAuthority() string {
