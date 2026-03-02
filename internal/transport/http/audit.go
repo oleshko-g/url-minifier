@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -55,23 +54,21 @@ func (a auditHandler) ServerHTTP(res http.ResponseWriter, req *http.Request) {
 
 func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.HandlerFunc {
 	s.auditSubjects = append(s.auditSubjects, make(chan auditEvent))
+	idx := len(s.auditSubjects) - 1 // index of the appended audited handler subject
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		h(res, req)
 		ctx = req.Context()
+		userID, _ := userIDFromContext(ctx)
+		originURL, _ := originalURLFromCtx(ctx)
 
-		_ = context.AfterFunc(ctx, func() {
-			userID, _ := userIDFromContext(ctx)
-			originURL, _ := originalURLFromCtx(ctx)
-			a := auditEvent{
+		context.AfterFunc(ctx, func() {
+			s.auditSubjects[idx] <- auditEvent{
 				Action: action,
 				TS:     time.Now().Unix(),
 				UserID: &userID,
 				URL:    originURL,
 			}
-			l := len(s.auditSubjects) - 1
-			s.auditSubjects[l] <- a
-			slog.Info(fmt.Sprintf("sent %+von s.auditChannels[l]", a))
 		})
 	})
 }
