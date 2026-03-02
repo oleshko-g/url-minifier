@@ -16,4 +16,7 @@ fullbuild: test
 	go build
 
 heap:
-	go tool pprof -http=:8082 -seconds=15 http://localhost:8080/debug/pprof/heap
+	go tool pprof -http=:8082 -seconds=30 http://localhost:8080/debug/pprof/heap
+
+profile:
+	go tool pprof -http=:8083 -seconds=30 http://localhost:8080/debug/pprof/profile
