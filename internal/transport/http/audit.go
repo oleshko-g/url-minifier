@@ -56,9 +56,8 @@ func (s *Server) newAuditedHandler(action string, h http.HandlerFunc) http.Handl
 	s.auditSubjects = append(s.auditSubjects, make(chan auditEvent))
 	idx := len(s.auditSubjects) - 1 // index of the appended audited handler subject
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
 		h(res, req)
-		ctx = req.Context()
+		ctx := req.Context()
 		userID, _ := userIDFromContext(ctx)
 		originURL, _ := originalURLFromCtx(ctx)
 
