@@ -18,6 +18,8 @@ type Config struct {
 	canDecompress map[coding]struct{}
 	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
 	secretKey     secret
+	auditFile
+	auditURL
 }
 
 // Address returns a pointer to the [flag.Value] to set up the [Server]
@@ -28,6 +30,16 @@ func (c *Config) Address() *address { // revive:disable-line:unexported-return p
 // SecretAuthKey returns a pointer to the [flag.Value] to set up the [Server]
 func (c *Config) SecretAuthKey() *secret { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.secretKey
+}
+
+// AuditFile returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) AuditFile() *auditFile { // revive:disable-line:unexported-return provides the interface to the caller
+	return &c.auditFile
+}
+
+// AuditURL returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) AuditURL() *auditURL { // revive:disable-line:unexported-return provides the interface to the caller
+	return &c.auditURL
 }
 
 type codings []coding
@@ -76,10 +88,12 @@ func (a *address) Set(s string) error {
 
 type secret string
 
+// Steing is secret
 func (sec secret) String() string {
 	return ""
 }
 
+// Set sets the secret key of the minifier
 func (sec *secret) Set(s string) error {
 	*sec = secret(s)
 	return nil

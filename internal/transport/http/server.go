@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"strconv"
 
@@ -22,6 +23,8 @@ type Server struct {
 	Service
 	*Config
 	logger
+	auditors      []auditor
+	auditSubjects []chan auditEvent
 }
 
 // Service is the expected URL minifier service
@@ -55,6 +58,8 @@ func NewServer(s Service, cp *Config) *Server {
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
+	srv.logger = slog.New(slog.Default().Handler())
+
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
 
@@ -63,27 +68,46 @@ func NewServer(s Service, cp *Config) *Server {
 		r.Use(srv.withEncodingMiddleware)
 		r.Use(srv.withAuthorization)
 
-		r.Get("/{id}", srv.unMinifyURLHandler())
-		r.Post("/", srv.authorized(srv.minifyURLHandler()))
+		r.Get("/{id}", srv.newAuditedHandler("follow", srv.unMinifyURLHandler()))
+		r.Post("/", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLHandler())))
 		r.Route("/api", func(r chi.Router) {
-			r.Post("/shorten", srv.authorized(srv.minifyURLJSONHandler()))
+			r.Post("/shorten", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLJSONHandler())))
 			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
 			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
 			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
 		})
 	})
+	r.Get("/debug/pprof/profile", pprof.Profile)
+	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
+
+	if cp.auditFile.enabled {
+		srv.auditors = append(srv.auditors, &cp.auditFile)
+	}
+
+	if cp.auditURL.enabled {
+		srv.auditors = append(srv.auditors, &cp.auditURL)
+	}
 
 	srv.server.Handler = r
-
-	srv.logger = slog.New(slog.Default().Handler())
 
 	return srv
 }
 
 // ListenAndServe starts underlying [http.Server]
 func (s *Server) ListenAndServe() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, auditor := range s.auditors {
+		for _, auditSubject := range s.auditSubjects {
+			go auditor.subscribe(ctx, auditSubject)
+			s.logger.Info(fmt.Sprintf("subscribed auditor %+v to subject %+v", auditor, auditSubject))
+		}
+	}
+
 	s.server.Addr = s.Address().String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
+
 	return s.server.ListenAndServe()
 }
 
@@ -207,7 +231,7 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 			return
 		}
 
-		s.logger.Debug(fmt.Sprintf("Original URL: %s", url))
+		s.logger.Info(fmt.Sprintf("Original URL: %s", url))
 
 		minifiedURL, err := s.Service.MinifyURL(ctx, userID, url.String())
 		statusCode := http.StatusCreated
@@ -221,7 +245,10 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 			statusCode = http.StatusConflict
 		}
 
-		s.logger.Debug(fmt.Sprintf("minifiedURL: %s", minifiedURL))
+		s.logger.Info(fmt.Sprintf("minifiedURL: %s", minifiedURL))
+
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, url.String())
+		*req = *req.WithContext(ctx)
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.Header().Set("Content-Length", strconv.Itoa(len(minifiedURL)))
@@ -252,6 +279,9 @@ func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 			res.WriteHeader(http.StatusGone)
 			return
 		}
+
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, url)
+		*req = *req.WithContext(ctx)
 
 		res.Header().Add("Location", url)
 		res.Header().Set("Content-Type", "text/plain")
@@ -317,14 +347,16 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 			s.logger.Error(err.Error())
 			return
 		}
+
+		ctx = context.WithValue(ctx, contextKeyOriginalURL, reqBody.URL)
+		*req = *req.WithContext(ctx)
+
 		res.Header().Set("Content-Type", "application/json")
 		res.Header().Set("Content-Length", strconv.Itoa(len(jsonData)))
 		res.WriteHeader(statusCode)
 		res.Write([]byte(jsonData))
 	}
 }
-
-// func (s *Server)
 
 func responseWithError(res http.ResponseWriter, err error, statusCode int) {
 

@@ -32,6 +32,7 @@ func New(c *Config) (file *File, err error) {
 }
 
 // File is a filesystem implementation of [minifier.Storager]
+// TODO: refactor into "FileStorage" and separate the [File]
 type File struct {
 	mux sync.RWMutex
 	p   *os.File

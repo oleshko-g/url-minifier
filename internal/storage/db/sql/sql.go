@@ -1,5 +1,5 @@
 // Package sql is the internal implementation of [database/sql]
-package sql
+package sql // revive:disable-line:var-naming see the package description.
 
 import (
 	"context"
@@ -18,29 +18,32 @@ import (
 )
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
-func New(c *db.Config) (s *Storage, err error) {
-	database, err := sql.Open(c.DSN().DriverName.String(), c.DSN().String())
+func New(dbCfg db.Config) (*Storage, error) {
+	db, err := connectDB(string(dbCfg.DriverName), dbCfg.DSN().String())
 	if err != nil {
+		err = createDB(dbCfg)
+		if err != nil {
+			return nil, err
+		}
+
+		db, err = connectDB(string(dbCfg.DriverName), dbCfg.DSN().String())
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	if err = schema.Up(dbCfg.DSN().DriverName, db); err != nil {
 		return nil, err
 	}
 
-	err = database.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	if err = schema.Up(c.DSN().DriverName, database); err != nil {
-		return
-	}
-
-	return &Storage{
-		db: database,
-	}, nil
+	return &Storage{Config: dbCfg, db: db}, nil
 }
 
 // Storage represents an internal implementation of [sql.DB]
 type Storage struct {
 	db *sql.DB
+	db.Config
 }
 
 var _ storage.Storager = (*Storage)(nil)
@@ -238,4 +241,70 @@ func (s *Storage) RetrieveUserString(ctx context.Context, key string) (storage.U
 		Value:   dus.Value,
 		Deleted: dus.IsDeleted(),
 	}, nil
+}
+
+// TearDown provide closes and drops the underlying sql DB.
+func (s *Storage) TearDown() error {
+	err := s.db.Close()
+	if err != nil {
+		return err
+	}
+
+	err = s.drop()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) drop() error {
+	defaultDB, err := connectDB(string(s.DriverName), s.DefaultDSN)
+	if err != nil {
+		return err
+	}
+	defer func() { err = defaultDB.Close(); slog.Error(err.Error()) }()
+
+	s.db.Close()
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	q := fmt.Sprintf("DROP DATABASE %s;", s.DBName)
+	_, err = defaultDB.ExecContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createDB(dbCfg db.Config) error {
+	defaultDB, err := connectDB(string(dbCfg.DriverName), dbCfg.DefaultDSN)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	q := fmt.Sprintf("CREATE DATABASE %s;", dbCfg.DBName)
+	_, err = defaultDB.ExecContext(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func connectDB(driverName string, dsn string) (*sql.DB, error) {
+	db, err := sql.Open(driverName, dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
