@@ -308,7 +308,3 @@ func connectDB(driverName string, dsn string) (*sql.DB, error) {
 
 	return db, nil
 }
-
-type Execer interface {
-	ExecContext(ctx context.Context, q string) (sql.Result, error)
-}

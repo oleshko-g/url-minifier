@@ -1,3 +1,4 @@
+// Package urlgenerator is a utility package that implements random URL generator
 package urlgenerator
 
 import (
@@ -11,7 +12,8 @@ import (
 
 const defaultURLPartLen = 2
 
-func NewURLGenerator(urlPartLen int) *urlGenerator {
+// NewURLGenerator returns return random URL generator with the set max URL part length to [Generate] repeatedly
+func NewURLGenerator(urlPartLen int) *urlGenerator { // revive:disable-line:unexported-return return a pointer to repeatedly call [Generate]
 	if urlPartLen <= 0 {
 		urlPartLen = defaultURLPartLen
 	}
@@ -90,15 +92,15 @@ func (ug *urlGenerator) randromAuthority() string {
 	return ""
 }
 
-func (ug *urlGenerator) randomURLEncodedString(len int) string {
-	for ug.rBuf.Len() < len {
+func (ug *urlGenerator) randomURLEncodedString(length int) string {
+	for ug.rBuf.Len() < length {
 		ug.rBuf.WriteByte(0) // inittialize with zeroes to fill up by random bytes
 	}
 
 	cryptoRand.Read(ug.rBuf.Bytes()) //revive:disable-line Fills up the buffer and never returns an error
 	defer ug.rBuf.Reset()
 
-	return base64.RawURLEncoding.EncodeToString(ug.rBuf.Bytes()[:len])
+	return base64.RawURLEncoding.EncodeToString(ug.rBuf.Bytes()[:length])
 }
 
 func flipCoin() bool {

@@ -1,3 +1,4 @@
+// Package main is the entry point to vegeta target generator
 package main
 
 import (

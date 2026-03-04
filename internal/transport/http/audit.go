@@ -163,10 +163,6 @@ func (a *auditURL) subscribe(ctx context.Context, auditEvent <-chan auditEvent) 
 	}
 }
 
-func (a *auditURL) Write(b []byte) (int, error) {
-	return 0, nil
-}
-
 // Set parses s into a [url.URL] and sets it as the value of audit URL
 func (a *auditURL) Set(s string) error {
 	parsedURL, err := url.Parse(s)
