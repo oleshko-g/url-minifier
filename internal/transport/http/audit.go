@@ -102,7 +102,7 @@ func (a *auditFile) subscribe(ctx context.Context, auditEvents <-chan auditEvent
 	}
 }
 
-// Set oprn or creates the audit file or returns an error
+// Set opens or creates the audit file or returns an error
 func (a *auditFile) Set(s string) error {
 	// Write Read _, Read _ _, Read _ _
 	const filePerm os.FileMode = 0o644
@@ -175,7 +175,7 @@ func (a *auditURL) Set(s string) error {
 	return nil
 }
 
-// String return the opeque respresentation of an audit URL
+// String return the opaque representation of an audit URL
 func (a *auditURL) String() string {
 	if a.url == nil {
 		return ""

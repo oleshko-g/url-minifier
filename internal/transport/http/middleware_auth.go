@@ -146,10 +146,10 @@ func parseSignedCookie(cookieValue string) (cookieParts []string, err error) {
 func sign(s, secretKey string) ([]byte, error) {
 	var (
 		sb   = []byte(s)
-		keyb = []byte(secretKey)
+		key = []byte(secretKey)
 	)
 
-	h := hmac.New(sha256.New, keyb)
+	h := hmac.New(sha256.New, key)
 	if _, err := h.Write(sb); err != nil {
 		return nil, err
 	}

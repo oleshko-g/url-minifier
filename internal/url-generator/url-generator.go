@@ -39,7 +39,7 @@ func (ug *urlGenerator) Generate() string {
 	defer ug.builder.Reset()
 
 	// generate Authority
-	ug.builder.WriteString(ug.randromAuthority())
+	ug.builder.WriteString(ug.randomAuthority())
 	ug.builder.WriteString("://")
 
 	// generate Host
@@ -53,7 +53,7 @@ func (ug *urlGenerator) Generate() string {
 		ug.builder.WriteString(ug.randomURLEncodedString(ug.URLPartLen))
 	}
 
-	if genrateQuery := flipCoin(); genrateQuery {
+	if generateQuery := flipCoin(); generateQuery {
 		// generate the first Query
 		ug.builder.WriteRune('?')
 		//key
@@ -82,7 +82,7 @@ func (ug *urlGenerator) Generate() string {
 	return ug.builder.String()
 }
 
-func (ug *urlGenerator) randromAuthority() string {
+func (ug *urlGenerator) randomAuthority() string {
 	switch rand.Intn(2) {
 	case 0:
 		return "http"
@@ -94,7 +94,7 @@ func (ug *urlGenerator) randromAuthority() string {
 
 func (ug *urlGenerator) randomURLEncodedString(length int) string {
 	for ug.rBuf.Len() < length {
-		ug.rBuf.WriteByte(0) // inittialize with zeroes to fill up by random bytes
+		ug.rBuf.WriteByte(0) // initialize with zeroes to fill up by random bytes
 	}
 
 	cryptoRand.Read(ug.rBuf.Bytes()) //revive:disable-line Fills up the buffer and never returns an error

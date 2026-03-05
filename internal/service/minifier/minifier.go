@@ -96,7 +96,7 @@ func (s *Service) MinifyURLs(ctx context.Context, userID string, originalURLs []
 			if !errors.Is(err, ErrMinifiedAlready) {
 				return nil, err
 			}
-			// keep  err == [ErrMinifiedAlready] untill the end or encounterig a real error
+			// keep  err == [ErrMinifiedAlready] until the end or encountering a real error
 		}
 		minifiedURLs = append(minifiedURLs, minifiedURL)
 	}
@@ -128,7 +128,7 @@ func (s *Service) newURL(id, originalURL string) URL {
 	}
 }
 
-// DeleteUserURLs takes userID and a slice of minified IDs and markes as deleted the associated minified URLs
+// DeleteUserURLs takes userID and a slice of minified IDs and marks as deleted the associated minified URLs
 func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
 	ctx := context.Background()
 	var successCh = make(chan struct{}, len(minifiedIDs))

@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-// errParsingAdress indicates an error while parsing an address URL for an instance of http server
+// errParsingAddress indicates an error while parsing an address URL for an instance of http server
 //
 // [url-minifier]: https://github.com/oleshko-g/url-minifier
-var errParsingAdress = errors.New("error parsing address")
+var errParsingAddress = errors.New("error parsing address")
 
 // Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
@@ -76,11 +76,11 @@ func (a *address) Set(s string) error {
 	}
 
 	if a.host = url.Hostname(); url.Hostname() == "" {
-		return fmt.Errorf("%w: %s", errParsingAdress, "empty scheme")
+		return fmt.Errorf("%w: %s", errParsingAddress, "empty scheme")
 	}
 
 	if a.port = url.Port(); url.Port() == "" {
-		return fmt.Errorf("%w: %s", errParsingAdress, "empty port")
+		return fmt.Errorf("%w: %s", errParsingAddress, "empty port")
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func (a *address) Set(s string) error {
 
 type secret string
 
-// Steing is secret
+// String is secret
 func (sec secret) String() string {
 	return ""
 }

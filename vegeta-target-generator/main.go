@@ -19,7 +19,7 @@ import (
 type app struct {
 	state
 	stateMachine    map[state]state
-	authrity        string
+	authority       string
 	host            string
 	port            string
 	method          string
@@ -55,7 +55,7 @@ const (
 type handler func(a *app, input string) error
 
 var targetGenerator = app{
-	// initital statte
+	// initial state
 	state: enteringMethod,
 	stateMachine: map[state]state{
 		// currentState 			 // nextState
@@ -74,10 +74,10 @@ var targetGenerator = app{
 		creatingTargetsDir:    handleCreatingTargetsDir,
 		creatingTargets:       handleCreatingTargets,
 	},
-	authrity: defaultAuthority,
-	host:     defaultHost,
-	port:     defaultPort,
-	headers:  make(map[string][]string),
+	authority: defaultAuthority,
+	host:      defaultHost,
+	port:      defaultPort,
+	headers:   make(map[string][]string),
 }
 
 func main() {
@@ -294,7 +294,7 @@ func (a *app) buildTarget(builder *strings.Builder, bodyFilePath string) error {
 	// write first line
 	builder.WriteString(a.method)
 	builder.WriteRune(' ')
-	builder.WriteString(a.authrity)
+	builder.WriteString(a.authority)
 	builder.WriteString(a.host)
 	builder.WriteRune(':')
 	builder.WriteString(a.port)

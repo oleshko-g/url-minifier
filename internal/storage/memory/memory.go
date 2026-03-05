@@ -114,7 +114,7 @@ func (s *strRecords) saveUserString(u user, k key, str string) error {
 // TODO: add tests
 func (s *strRecords) SaveList(values []map[string]string) error {
 	_ = values
-	// TODL: write the implementation
+	// TODO: write the implementation
 	return nil
 }
 

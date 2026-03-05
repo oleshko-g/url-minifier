@@ -182,11 +182,11 @@ func (s *Storage) RetrieveUserStrings(ctx context.Context, userID string) ([]sto
 // TODO: add tests
 func (s *Storage) SaveList(values []map[string]string) error {
 	_ = values
-	// TODL: write the implementation
+	// TODO: write the implementation
 	return nil
 }
 
-// MarkDeletedUserString sets deleted_at. If the user isn't the ownder it returns [storageErrors.AccessDenifed]
+// MarkDeletedUserString sets deleted_at. If the user isn't the owner it returns [storageErrors.AccessDenied]
 func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
 	var err error
 

@@ -34,7 +34,7 @@ func Benchmark_encode(b *testing.B) {
 		}
 	})
 
-	b.Run("extremly long URL len 2005", func(b *testing.B) {
+	b.Run("extremely long URL len 2005", func(b *testing.B) {
 
 		for b.Loop() {
 			// len(in) is close to 2005 characters
