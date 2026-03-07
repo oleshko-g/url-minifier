@@ -216,7 +216,7 @@ func (f *File) retrieveUserStrings(userID string) (key, value string, err error)
 
 // MarkDeletedUserString is the file implementation
 //
-// TODO: retrieve a value, set deletedAt is it's not
+// TODO: retrieve a value, set deletedAt if it's not
 func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
 	_, _, _ = ctx, userID, key
 	return nil

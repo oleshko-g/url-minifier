@@ -188,20 +188,22 @@ func (s *Storage) SaveList(values []map[string]string) error {
 
 // MarkDeletedUserString sets deleted_at. If the user isn't the owner it returns [storageErrors.AccessDenied]
 func (s *Storage) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
-	var err error
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
-	dus, err := s.retrieveUserString(ctx, key)
+	userString, err := s.retrieveUserString(ctx, key)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = fmt.Errorf("%w: by key \"%s\"", storageErrors.ErrNotFound, key)
 		return err
 	}
 
-	if userID != dus.UserID {
+	if userID != userString.UserID {
 		err = fmt.Errorf("%w: userID \"%s\" %s", storageErrors.ErrAccessDenied, userID, "isn't the owner of data")
 		return err
 	}
 
-	if dus.IsDeleted() {
+	if userString.IsDeleted() {
 		return nil
 	}
 

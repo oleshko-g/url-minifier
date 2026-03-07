@@ -12,6 +12,7 @@ import (
 	"net/http/pprof"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
@@ -37,7 +38,8 @@ type Service interface {
 		urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
 	UserURLs(ctx context.Context, userID string) ([]minifier.URL, error)
-	DeleteUserURLs(userID string, minifiedIDs []string) error
+	// DeleteUserURLs deletes a batch of shortened URLs
+	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
 	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
 }
@@ -518,6 +520,8 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 	return func(userID string, res http.ResponseWriter, req *http.Request) {
 		var err error
 
+		req = req.WithContext(req.Context())
+
 		if userID == "" {
 			err = errors.New("userID is empty")
 			responseWithError(res, err, http.StatusUnauthorized)
@@ -544,7 +548,10 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 		}
 
 		go func() {
-			err := s.Service.DeleteUserURLs(userID, minifiedIDs)
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			err := s.Service.DeleteUserURLs(ctx, userID, minifiedIDs)
 			if err != nil {
 				s.logger.Error(err.Error())
 			}
