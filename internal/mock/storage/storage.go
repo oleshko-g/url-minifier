@@ -22,9 +22,6 @@ var _ storage.Storager = &StoragerMock{}
 //			MarkDeletedUserStringFunc: func(ctx context.Context, userID string, key string) error {
 //				panic("mock out the MarkDeletedUserString method")
 //			},
-//			PingFunc: func() error {
-//				panic("mock out the Ping method")
-//			},
 //			RetrieveFunc: func(key string) (string, error) {
 //				panic("mock out the Retrieve method")
 //			},
@@ -52,9 +49,6 @@ var _ storage.Storager = &StoragerMock{}
 type StoragerMock struct {
 	// MarkDeletedUserStringFunc mocks the MarkDeletedUserString method.
 	MarkDeletedUserStringFunc func(ctx context.Context, userID string, key string) error
-
-	// PingFunc mocks the Ping method.
-	PingFunc func() error
 
 	// RetrieveFunc mocks the Retrieve method.
 	RetrieveFunc func(key string) (string, error)
@@ -84,9 +78,6 @@ type StoragerMock struct {
 			UserID string
 			// Key is the key argument value.
 			Key string
-		}
-		// Ping holds details about calls to the Ping method.
-		Ping []struct {
 		}
 		// Retrieve holds details about calls to the Retrieve method.
 		Retrieve []struct {
@@ -128,7 +119,6 @@ type StoragerMock struct {
 		}
 	}
 	lockMarkDeletedUserString sync.RWMutex
-	lockPing                  sync.RWMutex
 	lockRetrieve              sync.RWMutex
 	lockRetrieveUserString    sync.RWMutex
 	lockRetrieveUserStrings   sync.RWMutex
@@ -174,33 +164,6 @@ func (mock *StoragerMock) MarkDeletedUserStringCalls() []struct {
 	mock.lockMarkDeletedUserString.RLock()
 	calls = mock.calls.MarkDeletedUserString
 	mock.lockMarkDeletedUserString.RUnlock()
-	return calls
-}
-
-// Ping calls PingFunc.
-func (mock *StoragerMock) Ping() error {
-	if mock.PingFunc == nil {
-		panic("StoragerMock.PingFunc: method is nil but Storager.Ping was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockPing.Lock()
-	mock.calls.Ping = append(mock.calls.Ping, callInfo)
-	mock.lockPing.Unlock()
-	return mock.PingFunc()
-}
-
-// PingCalls gets all the calls that were made to Ping.
-// Check the length with:
-//
-//	len(mockedStorager.PingCalls())
-func (mock *StoragerMock) PingCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockPing.RLock()
-	calls = mock.calls.Ping
-	mock.lockPing.RUnlock()
 	return calls
 }
 

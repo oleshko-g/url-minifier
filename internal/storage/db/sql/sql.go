@@ -46,7 +46,7 @@ type Storage struct {
 	db.Config
 }
 
-var _ storage.Storager = (*Storage)(nil)
+var _ storage.StoragePinger = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {

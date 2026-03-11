@@ -13,12 +13,12 @@ import (
 
 // Service is the implementation of [http.Service]
 type Service struct {
-	storage storage.Storager
+	storage storage.StoragePinger
 	*Config
 }
 
 // New configures a URL minifier service with the passed [Storager] and [Config]
-func New(s storage.Storager, cp *Config) *Service {
+func New(s storage.StoragePinger, cp *Config) *Service {
 	return &Service{
 		storage: s,
 		Config:  cp,
@@ -152,7 +152,7 @@ func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs
 	for range minifiedIDs {
 		select {
 		case <-ctx.Done():
-		return context.Cause(ctx)
+			return context.Cause(ctx)
 		case <-successCh:
 		}
 	}

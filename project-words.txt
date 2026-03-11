@@ -19,3 +19,5 @@ vegeta
 godotenv
 joho
 unminify
+wraper
+JSONURL
