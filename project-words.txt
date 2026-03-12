@@ -21,3 +21,4 @@ joho
 unminify
 wraper
 JSONURL
+singlechecker
