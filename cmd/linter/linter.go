@@ -13,34 +13,49 @@ var PanicFatalExitAnalyzer *analysis.Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	inspect(pass.Files)
+	diags := inspect(pass.Files)
+	for _, diag := range diags {
+		pass.Report(diag)
+	}
 	return nil, nil
 }
 
-func inspect(files []*ast.File) {
+func inspect(files []*ast.File) []analysis.Diagnostic {
+	var diags []analysis.Diagnostic
 	for _, file := range files {
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch node := node.(type) {
 			case *ast.CallExpr:
-				check(node)
+				if diag := checkCallExpr(node); diag != nil {
+					diags = append(diags, *diag)
+				}
 			}
 			return true
 		})
-
 	}
+
+	return nil
 }
 
-func check(call *ast.CallExpr) *analysis.Diagnostic {
-	// TODO: write if CallExpr.Name == "panic" report the error
+func checkCallExpr(call *ast.CallExpr) *analysis.Diagnostic {
+
+	if fun, ok := call.Fun.(*ast.Ident); ok {
+		if fun.Name == "panic" {
+			return &analysis.Diagnostic{
+				Pos:     fun.Pos(),
+				Message: "panics",
+			}
+		}
+	}
+
+	return nil
+}
+
+func checkBlockStmt(declBody *ast.BlockStmt) *analysis.Diagnostic {
+	_ = declBody
 
 	// TODO: if in FuncDecl.Name == "main" AND BlockStmt contains
 	// * TODO: write if log.Fatal.Name == "log.Fatal" report the error
 	// * TODO: write if log.Fatal.Name == "os.Exit" report the error
-	// # TODO: write if log.Fatal.Name == "os.Exit" report the error
-
-	if ok := true; !ok {
-		return &analysis.Diagnostic{}
-	}
-
 	return nil
 }
