@@ -23,8 +23,17 @@ func run(pass *analysis.Pass) (any, error) {
 func inspect(files []*ast.File) []analysis.Diagnostic {
 	var diags []analysis.Diagnostic
 	for _, file := range files {
+		var inMainFunc bool
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch node := node.(type) {
+			case *ast.FuncDecl:
+				if node.Name.Name == "main" {
+					inMainFunc = true
+				}
+			case *ast.SelectorExpr:
+				if !inMainFunc {
+					checkBlockStmt(inMainFunc, node)
+				}
 			case *ast.CallExpr:
 				if diag := checkCallExpr(node); diag != nil {
 					diags = append(diags, *diag)
@@ -51,11 +60,36 @@ func checkCallExpr(call *ast.CallExpr) *analysis.Diagnostic {
 	return nil
 }
 
-func checkBlockStmt(declBody *ast.BlockStmt) *analysis.Diagnostic {
-	_ = declBody
+func checkBlockStmt(inMainFunc bool, expr *ast.SelectorExpr) *analysis.Diagnostic {
+	if x, ok := expr.X.(*ast.Ident); ok {
+		if !inMainFunc && isOSExit(x.Name, expr.Sel.Name) {
+			return &analysis.Diagnostic{
+				Pos:     expr.Pos(),
+				Message: "calls os.Exit outside of main func",
+			}
+		}
 
-	// TODO: if in FuncDecl.Name == "main" AND BlockStmt contains
-	// * TODO: write if log.Fatal.Name == "log.Fatal" report the error
-	// * TODO: write if log.Fatal.Name == "os.Exit" report the error
+		if !inMainFunc && isLogFatal(x.Name, expr.Sel.Name) {
+			return &analysis.Diagnostic{
+				Pos:     expr.Pos(),
+				Message: "calls log.Fatal outside of main func",
+			}
+		}
+	}
 	return nil
+}
+
+func isOSExit(xName, selName string) bool {
+	if xName == "os" && selName == "Exit" {
+		return true
+	}
+	return false
+}
+
+func isLogFatal(xName, selName string) bool {
+	if xName == "log" && selName == "Fatal" {
+		return true
+	}
+
+	return false
 }
