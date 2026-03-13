@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 
 	"golang.org/x/tools/go/analysis"
@@ -13,6 +14,9 @@ var PanicFatalExitAnalyzer *analysis.Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	pass.Report = func(d analysis.Diagnostic) {
+		fmt.Println(d.Message)
+	}
 	diags := inspect(pass.Files)
 	for _, diag := range diags {
 		pass.Report(diag)
