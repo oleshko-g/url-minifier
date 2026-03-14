@@ -13,12 +13,12 @@ import (
 
 // Service is the implementation of [http.Service]
 type Service struct {
-	storage storage.Storager
+	storage storage.StoragePinger
 	*Config
 }
 
 // New configures a URL minifier service with the passed [Storager] and [Config]
-func New(s storage.Storager, cp *Config) *Service {
+func New(s storage.StoragePinger, cp *Config) *Service {
 	return &Service{
 		storage: s,
 		Config:  cp,
@@ -129,23 +129,30 @@ func (s *Service) newURL(id, originalURL string) URL {
 }
 
 // DeleteUserURLs takes userID and a slice of minified IDs and marks as deleted the associated minified URLs
-func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
-	ctx := context.Background()
+func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
 	var successCh = make(chan struct{}, len(minifiedIDs))
-	var errCh = make(chan error, len(minifiedIDs))
 	for _, mID := range minifiedIDs {
 		go func() {
-			errCh <- s.storage.MarkDeletedUserString(ctx, userID, mID)
+			err := s.storage.MarkDeletedUserString(ctx, userID, mID)
+			if err != nil {
+				cancel(err)
+				return
+			}
 			successCh <- struct{}{}
 		}()
 	}
 
-	for i := 0; i < len(minifiedIDs); i++ {
+	for range minifiedIDs {
 		select {
-		case err := <-errCh:
-			return err
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case <-successCh:
 		}
 	}
@@ -154,10 +161,10 @@ func (s *Service) DeleteUserURLs(userID string, minifiedIDs []string) error {
 
 // UnMinifyUserURL takes an id of a user string and returned its value and if it's deleted
 func (s *Service) UnMinifyUserURL(ctx context.Context, id string) (value string, isDeleted bool, err error) {
-	dus, err := s.storage.RetrieveUserString(ctx, id)
+	userString, err := s.storage.RetrieveUserString(ctx, id)
 	if err != nil {
 		return "", false, err
 	}
 
-	return dus.Value, dus.Deleted, nil
+	return userString.Value, userString.Deleted, nil
 }

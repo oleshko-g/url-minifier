@@ -17,18 +17,19 @@ import (
 )
 
 // New returns a pointer to an opened [File] or an error
-func New(c *Config) (file *File, err error) {
+func New(c *Config) (file storage.StoragePinger, err error) {
 	fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
-		slog.Error(fmt.Sprintf(" fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm) : %s", err))
 		return nil, err
 	}
 
-	return &File{
-		p:      fp,
-		mux:    sync.RWMutex{},
-		Config: c,
-	}, nil
+	return storage.NewStoragePingerNoOp(
+			&File{
+				p:      fp,
+				mux:    sync.RWMutex{},
+				Config: c,
+			}),
+		nil
 }
 
 // File is a filesystem implementation of [minifier.Storager]
@@ -44,11 +45,6 @@ var _ storage.Storager = (*File)(nil)
 // Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {
 	return f.p.Close()
-}
-
-// Ping is no-op for [File]
-func (f *File) Ping() error {
-	return nil
 }
 
 type record struct {
@@ -216,7 +212,7 @@ func (f *File) retrieveUserStrings(userID string) (key, value string, err error)
 
 // MarkDeletedUserString is the file implementation
 //
-// TODO: retrieve a value, set deletedAt is it's not
+// TODO: retrieve a value, set deletedAt if it's not
 func (f *File) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
 	_, _, _ = ctx, userID, key
 	return nil

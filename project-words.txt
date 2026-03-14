@@ -19,3 +19,7 @@ vegeta
 godotenv
 joho
 unminify
+wraper
+JSONURL
+singlechecker
+analysistest
