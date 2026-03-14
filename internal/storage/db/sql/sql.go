@@ -161,7 +161,7 @@ func (s *Storage) RetrieveUserStrings(ctx context.Context, userID string) ([]sto
 	var uss []storage.UserString
 	for rows.Next() {
 		var us storage.UserString
-		err := rows.Scan(&us.UserID, &us.Key, &us.Value)
+		err = rows.Scan(&us.UserID, &us.Key, &us.Value)
 		if err != nil {
 			return nil, err
 		}

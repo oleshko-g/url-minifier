@@ -145,7 +145,7 @@ func parseSignedCookie(cookieValue string) (cookieParts []string, err error) {
 
 func sign(s, secretKey string) ([]byte, error) {
 	var (
-		sb   = []byte(s)
+		sb  = []byte(s)
 		key = []byte(secretKey)
 	)
 

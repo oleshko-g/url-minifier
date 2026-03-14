@@ -5,9 +5,10 @@ package minifier
 
 import (
 	"context"
+	"sync"
+
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
-	"sync"
 )
 
 // Ensure, that ServiceMock does implement http.Service.
