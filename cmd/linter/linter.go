@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"go/ast"
 
 	"golang.org/x/tools/go/analysis"
@@ -14,9 +13,6 @@ var PanicFatalExitAnalyzer *analysis.Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	pass.Report = func(d analysis.Diagnostic) {
-		fmt.Println(d.Message)
-	}
 	diags := inspect(pass.Files)
 	for _, diag := range diags {
 		pass.Report(diag)
@@ -36,7 +32,9 @@ func inspect(files []*ast.File) []analysis.Diagnostic {
 				}
 			case *ast.SelectorExpr:
 				if !inMainFunc {
-					checkBlockStmt(inMainFunc, node)
+					if diag := checkBlockStmt(inMainFunc, node); diag != nil {
+						diags = append(diags, *diag)
+					}
 				}
 			case *ast.CallExpr:
 				if diag := checkCallExpr(node); diag != nil {
@@ -47,7 +45,7 @@ func inspect(files []*ast.File) []analysis.Diagnostic {
 		})
 	}
 
-	return nil
+	return diags
 }
 
 func checkCallExpr(call *ast.CallExpr) *analysis.Diagnostic {
@@ -97,3 +95,5 @@ func isLogFatal(xName, selName string) bool {
 
 	return false
 }
+
+// targetName, targetSelName,
