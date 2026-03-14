@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 
 	"golang.org/x/tools/go/analysis"
@@ -64,36 +65,27 @@ func checkCallExpr(call *ast.CallExpr) *analysis.Diagnostic {
 
 func checkBlockStmt(inMainFunc bool, expr *ast.SelectorExpr) *analysis.Diagnostic {
 	if x, ok := expr.X.(*ast.Ident); ok {
-		if !inMainFunc && isOSExit(x.Name, expr.Sel.Name) {
+		if !inMainFunc && isCallExpr("os", "Exit", x.Name, expr.Sel.Name) {
 			return &analysis.Diagnostic{
 				Pos:     expr.Pos(),
-				Message: "calls os.Exit outside of main func",
+				Message: fmt.Sprintf("calls %s.%s outside of main func", x.Name, expr.Sel.Name),
 			}
 		}
 
-		if !inMainFunc && isLogFatal(x.Name, expr.Sel.Name) {
+		if !inMainFunc && isCallExpr("log", "Fatal", x.Name, expr.Sel.Name) {
 			return &analysis.Diagnostic{
 				Pos:     expr.Pos(),
-				Message: "calls log.Fatal outside of main func",
+				Message: fmt.Sprintf("calls %s.%s outside of main func", x.Name, expr.Sel.Name),
 			}
 		}
 	}
 	return nil
 }
 
-func isOSExit(xName, selName string) bool {
-	if xName == "os" && selName == "Exit" {
-		return true
-	}
-	return false
-}
-
-func isLogFatal(xName, selName string) bool {
-	if xName == "log" && selName == "Fatal" {
+func isCallExpr(targetXName, targetSelName, xName, selName string) bool {
+	if targetXName == xName && targetSelName == selName {
 		return true
 	}
 
 	return false
 }
-
-// targetName, targetSelName,
