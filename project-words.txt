@@ -23,3 +23,4 @@ wraper
 JSONURL
 singlechecker
 analysistest
+pkgs
