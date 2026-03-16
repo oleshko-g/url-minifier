@@ -60,7 +60,10 @@ var _ storage.Storager = (*strRecords)(nil)
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	s.save(key, value)
+	err := s.save(key, value)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
