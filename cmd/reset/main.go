@@ -21,7 +21,10 @@ func main() {
 
 	for _, pkg := range pkgs {
 		fmt.Println(pkg.Name)
-		generateResetMethods(pkg)
+		err = generateResetMethods(pkg)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
