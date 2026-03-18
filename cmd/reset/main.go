@@ -15,8 +15,8 @@ import (
 )
 
 func main() {
-	dirPath := os.Args[1]
-	// dirPath := "../../"
+	// dirPath := os.Args[:1]
+	dirPath := "../../"
 
 	pkgs, err := loadPackages(dirPath)
 	if err != nil {
@@ -107,7 +107,10 @@ func truncate[s slice](v s) s {
 
 `
 
-	resetMethTmpl = `func ({{.RecName}} *{{.TypeName}}) Reset() {
+	resetMethTmpl = `func ({{.RecName}} *{{.StructName}}) Reset() {
+	if {{.RecName}} == nil {
+		return
+	}
 
 }`
 )
@@ -120,9 +123,12 @@ func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
 	}
 
 	var resetMeth = struct {
-		RecName  string
-		TypeName string
-	}{RecName: strings.ToLower(name[:1]), TypeName: name}
+		RecName    string
+		StructName string
+	}{
+		RecName:    strings.ToLower(name[:1]),
+		StructName: name,
+	}
 
 	err = templ.Execute(wr, resetMeth)
 	if err != nil {
