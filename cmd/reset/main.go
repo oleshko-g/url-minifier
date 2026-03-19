@@ -24,7 +24,6 @@ func main() {
 	}
 
 	for _, pkg := range pkgs {
-		fmt.Println(pkg.Name)
 		err = generateResetMethods(pkg)
 		if err != nil {
 			log.Fatal(err)
@@ -35,7 +34,7 @@ func main() {
 func loadPackages(dirPath string) ([]*packages.Package, error) {
 	pkgs, err := packages.Load(&packages.Config{
 		Dir:  dirPath,
-		Mode: packages.NeedName | packages.LoadSyntax | packages.NeedModule,
+		Mode: packages.LoadSyntax,
 	}, "./...")
 	if err != nil {
 		return nil, err
@@ -45,13 +44,14 @@ func loadPackages(dirPath string) ([]*packages.Package, error) {
 }
 
 func generateResetMethods(pkg *packages.Package) error {
-
 	for _, file := range pkg.Syntax {
 		structs := structsToReset(file)
 
 		for name, structToReset := range structs {
 			b := bytes.Buffer{}
 
+			pkgName := pkg.Name
+			fmt.Printf("generating \"reset.get.go\" for pakage: %s", pkgName)
 			templ, err := template.New("pkg").Parse(pkgTmpl)
 			if err != nil {
 				return err
@@ -116,13 +116,12 @@ func truncate[s slice](v s) s {
 )
 
 func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
-
 	templ, err := template.New("resetMeth").Parse(resetMethTmpl)
 	if err != nil {
 		return err
 	}
 
-	var resetMeth = struct {
+	resetMeth := struct {
 		RecName    string
 		StructName string
 	}{
@@ -140,7 +139,7 @@ func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
 }
 
 func structsToReset(file *ast.File) map[string]*ast.StructType {
-	var structsToReset = make(map[string]*ast.StructType)
+	structsToReset := make(map[string]*ast.StructType)
 
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
