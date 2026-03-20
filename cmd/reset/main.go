@@ -155,6 +155,63 @@ func structsToReset(file *ast.File) map[string]*ast.StructType {
 	return structsToReset
 }
 
+func resetStructs(structTypes map[string]*ast.StructType) []resetStruct {
+	var resetStructs []resetStruct
+
+	for name, structType := range structTypes {
+		fieldsByResetWay := fieldsByResetWay(structType.Fields)
+
+		resetStructs = append(resetStructs, resetStruct{
+			name:             name,
+			fieldsByResetWay: fieldsByResetWay,
+		})
+	}
+
+	return resetStructs
+}
+
+func fieldsByResetWay(fields *ast.FieldList) map[way][]string {
+	fieldsByResetWay := make(map[way][]string)
+
+	for _, field := range fields.List {
+		// * TODO: lookup in types info and determine the basic type and
+		fieldTypeName := field.Type.(*ast.Ident).Name
+		// * TODO: determine the reset way
+		resetWay := resetWay(fieldTypeName)
+
+		fieldName := field.Names[0].Name
+
+		fieldsByResetWay[resetWay] = append(fieldsByResetWay[resetWay], fieldName)
+	}
+	return fieldsByResetWay
+}
+
+func structTypes(file *ast.File) map[string]*ast.StructType {
+	structTypes := make(map[string]*ast.StructType)
+
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if ok {
+			if hasComment("// generate:reset", genDecl) {
+				if name, structType := isStructDecl(genDecl); structType != nil {
+					structTypes[name] = structType
+				}
+			}
+		}
+	}
+
+	return structTypes
+}
+
+func resetWay(fieldTypeName string) way {
+
+	switch fieldTypeName {
+	default:
+		return ""
+	}
+
+}
+
 func isStructDecl(decl *ast.GenDecl) (name string, typ *ast.StructType) {
 	if len(decl.Specs) == 1 {
 		if typeSpec, ok := decl.Specs[0].(*ast.TypeSpec); ok {
@@ -178,3 +235,10 @@ func hasComment(comment string, decl *ast.GenDecl) bool {
 
 	return false
 }
+
+type resetStruct struct {
+	name             string
+	fieldsByResetWay map[way][]string
+}
+
+type way string
