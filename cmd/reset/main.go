@@ -94,14 +94,14 @@ type scalar interface {
 	~bool | ~string | ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~complex64 | ~complex128
 }
 
-func zero[t scalar]() t {
-	var v t
+type zeroer[T scalar] struct{}
+
+func (z zeroer[T]) zero() T {
+	var v T
 	return v
 }
 
-type slice []any
-
-func truncate[s slice](v s) s {
+func truncate[T any](v []T) []T {
 	return v[:0]
 }
 
