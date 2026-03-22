@@ -44,6 +44,8 @@ func loadPackages(dirPath string) ([]*packages.Package, error) {
 	return pkgs, nil
 }
 
+// generateResetMethods generates "reset.gen.go" file in the path of pkg.
+// "reset.gen.go" contains [Reset] method for each struct that's been declared in the package scope with the above "// generate:reset" comment.
 func generateResetMethods(pkg *packages.Package) error {
 	for _, file := range pkg.Syntax {
 		structTypesToReset := structTypesToReset(file)
