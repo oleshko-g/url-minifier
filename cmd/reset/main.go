@@ -47,40 +47,64 @@ func loadPackages(dirPath string) ([]*packages.Package, error) {
 // generateResetMethods generates "reset.gen.go" file in the path of pkg.
 // "reset.gen.go" contains [Reset] method for each struct that's been declared in the package scope with the above "// generate:reset" comment.
 func generateResetMethods(pkg *packages.Package) error {
-	for _, file := range pkg.Syntax {
-		structTypesToReset := structTypesToReset(file)
+	structTypeDecls := findStructTypeDeclsToReset(pkg.Syntax)
+	if structTypeDecls == nil {
+		return nil
+	}
 
-		for name, structToReset := range structTypesToReset {
-			b := bytes.Buffer{}
+	structTypes := mapToMap(
+		func(structTypeDecl *ast.StructType) *types.Struct {
+			return pkg.TypesInfo.Types[structTypeDecl].Type.(*types.Struct)
+		}, structTypeDecls)
 
-			pkgName := pkg.Name
-			fmt.Printf("generating \"reset.get.go\" for pakage: %s", pkgName)
-			templ, err := template.New("pkg").Parse(pkgTmpl)
-			if err != nil {
-				return err
-			}
-
-			err = templ.Execute(&b, pkg.Name)
-			if err != nil {
-				return err
-			}
-
-			err = generateResetMethod(&b, name, structToReset.Fields.List)
-			if err != nil {
-				return err
-			}
-
-			path := path.Join(pkg.Dir, "reset.gen.go")
-
-			err = os.WriteFile(path, b.Bytes(), 0o755)
-			if err != nil {
-				return err
-			}
+	if structTypes != nil {
+		b := bytes.Buffer{}
+		pkgName := pkg.Name
+		fmt.Printf("generating \"reset.get.go\" for pakage: %s", pkgName)
+		templ, err := template.New("pkg").Parse(pkgTmpl)
+		if err != nil {
+			return err
 		}
 
+		err = templ.Execute(&b, pkg.Name)
+		if err != nil {
+			return err
+		}
+
+		path := path.Join(pkg.Dir, "reset.gen.go")
+
+		err = os.WriteFile(path, b.Bytes(), 0o755)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func findStructTypeDeclsToReset(pkgFiles []*ast.File) (structTypes map[*ast.Ident]*ast.StructType) {
+
+	for _, file := range pkgFiles {
+		var genDecls []*ast.GenDecl
+		for _, v := range file.Decls {
+			if genDecl, ok := v.(*ast.GenDecl); ok {
+				genDecls = append(genDecls, genDecl)
+			}
+		}
+
+		for _, genDecl := range genDecls {
+			if hasComment("// generate:reset", genDecl) {
+				if ident, structType := structFromGenDecl(genDecl); structType != nil {
+					if structTypes == nil {
+						structTypes = make(map[*ast.Ident]*ast.StructType)
+					}
+
+					structTypes[ident] = structType
+				}
+			}
+		}
+	}
+	return structTypes
 }
 
 func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
@@ -107,22 +131,6 @@ func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
 }
 
 // structTypesToReset returns struct types marked with `// generate:reset` comment.
-func structTypesToReset(file *ast.File) map[string]*ast.StructType {
-	structTypes := make(map[string]*ast.StructType)
-
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if ok {
-			if hasComment("// generate:reset", genDecl) {
-				if name, structType := isStructDecl(genDecl); structType != nil {
-					structTypes[name] = structType
-				}
-			}
-		}
-	}
-
-	return structTypes
-}
 
 // resetStructs return a [ResetStruct] slice to feed into a template to generate the Reset method
 func resetStructs(structTypes map[string]*ast.StructType) []ResetStruct {
@@ -209,16 +217,17 @@ func isBasicType(t types.Type) *types.Basic {
 	return nil
 }
 
-func isStructDecl(decl *ast.GenDecl) (name string, typ *ast.StructType) {
+// structFromGenDecl transforms [*ast.GenDecl] to [*ast.StructType] declaration.
+func structFromGenDecl(decl *ast.GenDecl) (name *ast.Ident, typ *ast.StructType) {
 	if len(decl.Specs) == 1 {
 		if typeSpec, ok := decl.Specs[0].(*ast.TypeSpec); ok {
 			if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-				return typeSpec.Name.Name, structType
+				return typeSpec.Name, structType
 			}
 		}
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 func hasComment(comment string, decl *ast.GenDecl) bool {
@@ -287,3 +296,32 @@ func truncate[T any](v []T) []T {
 
 }`
 )
+
+func sliceToSlice[T1 any, T2 any](sliceOf []T1, transform func(from T1) (to T2)) []T2 {
+	var result = make([]T2, len(sliceOf))
+	for i, v := range sliceOf {
+		result[i] = transform(v)
+	}
+
+	return result
+}
+
+// mapToMap transform a KV1 map to a KV2 map
+func mapToMap[K comparable, V1 any, V2 any](transform func(V1) V2, from map[K]V1) (to map[K]V2) {
+	to = make(map[K]V2)
+
+	for k, v := range from {
+		to[k] = transform(v)
+	}
+	return to
+}
+
+func toFilter[T any](sliceOf []T, meets func(T) bool) (subSliceOf []T) {
+	for _, v := range sliceOf {
+		if meets(v) {
+			subSliceOf = append(subSliceOf, v)
+		}
+	}
+
+	return subSliceOf
+}
