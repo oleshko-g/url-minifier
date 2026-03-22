@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/types"
 	"io"
+	"iter"
 	"log"
 	"os"
 	"path"
@@ -54,10 +55,14 @@ func generateResetMethods(pkg *packages.Package) error {
 
 	structTypes := mapToMap(
 		func(structTypeDecl *ast.StructType) *types.Struct {
+			// find [types.Type] by declaration and assert to [types.Struct]
 			return pkg.TypesInfo.Types[structTypeDecl].Type.(*types.Struct)
 		}, structTypeDecls)
 
-	if structTypes != nil {
+	resetStructs := resetStructs(structTypes)
+
+	if resetStructs != nil {
+
 		b := bytes.Buffer{}
 		pkgName := pkg.Name
 		fmt.Printf("generating \"reset.get.go\" for pakage: %s", pkgName)
@@ -71,6 +76,10 @@ func generateResetMethods(pkg *packages.Package) error {
 			return err
 		}
 
+		for _, resetStruct := range resetStructs {
+			// * TODO: generate Reset Method
+			_ = resetStruct
+		}
 		path := path.Join(pkg.Dir, "reset.gen.go")
 
 		err = os.WriteFile(path, b.Bytes(), 0o755)
@@ -95,6 +104,7 @@ func findStructTypeDeclsToReset(pkgFiles []*ast.File) (structTypes map[*ast.Iden
 		for _, genDecl := range genDecls {
 			if hasComment("// generate:reset", genDecl) {
 				if ident, structType := structFromGenDecl(genDecl); structType != nil {
+					// if a first find allocate a map
 					if structTypes == nil {
 						structTypes = make(map[*ast.Ident]*ast.StructType)
 					}
@@ -133,57 +143,48 @@ func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
 // structTypesToReset returns struct types marked with `// generate:reset` comment.
 
 // resetStructs return a [ResetStruct] slice to feed into a template to generate the Reset method
-func resetStructs(structTypes map[string]*ast.StructType) []ResetStruct {
-	var resetStructs []ResetStruct
-
-	for name, structType := range structTypes {
-
-		resetStructs = append(resetStructs, ResetStruct{
-			Name:             name,
-			FieldsByResetWay: fieldsByResetWay(structType.Fields),
+func resetStructs(structTypes map[*ast.Ident]*types.Struct) []ResetStruct {
+	resetStructs := mapToSlice(structTypes,
+		func(ident *ast.Ident, structType *types.Struct) ResetStruct {
+			return ResetStruct{
+				Name:             ident.Name,
+				FieldsByResetWay: fieldsByResetWay(structType.Fields()),
+			}
 		})
-	}
 
 	return resetStructs
 }
 
-func fieldsByResetWay(fields *ast.FieldList) map[way][]string {
-	fieldsByResetWay := make(map[way][]string)
+func fieldsByResetWay(fields iter.Seq[*types.Var]) map[way][]resetField {
 
-	for _, field := range fields.List {
-		// * TODO: lookup in types info and determine the basic type and
+	fieldsByResetWay := make(map[way][]resetField)
 
-		if fieldType, ok := field.Type.(types.Type); ok {
-			underlyingType := underlyingTypeOf(fieldType)
+	for field := range fields {
+		underlyingType := underlyingTypeOf(field.Type())
 
-			if basicType := isBasicType(underlyingType); basicType != nil {
-				if isScalar(basicType.Kind()) {
-					fmt.Println(field.Type.(*ast.Ident).Name)
-				}
-			}
-			_ = underlyingType
-
+		resetWay := resetWay(underlyingType)
+		if resetWay == "unsupported" {
+			continue
 		}
 
-		fieldTypeName := field.Type.(*ast.Ident).Name
-		// * TODO: determine the reset way
-		resetWay := resetWay(fieldTypeName)
+		fieldsByResetWay[resetWay] = append(fieldsByResetWay[resetWay], resetField{
+			typeName:  field.Id(),
+			fieldName: field.Name(),
+		})
 
-		var fieldNames []string
-		for _, fieldIdent := range field.Names {
-			fieldNames = append(fieldNames, fieldIdent.Name)
-		}
-
-		fieldsByResetWay[resetWay] = append(fieldsByResetWay[resetWay], fieldNames...)
 	}
 	return fieldsByResetWay
 }
 
+type resetField struct {
+	typeName, fieldName string
+}
+
 func underlyingTypeOf(t types.Type) types.Type {
-	var underlying types.Type
+	underlying := t.Underlying()
+
 	for {
-		underlying = t.Underlying()
-		if underlying == t {
+		if underlying == underlying.Underlying() {
 			return underlying
 		}
 	}
@@ -201,20 +202,21 @@ func isScalar(t types.BasicKind) bool {
 	return false
 }
 
-func resetWay(fieldTypeName string) way {
+func resetWay(t types.Type) way {
 
-	switch fieldTypeName {
-	default:
-		return ""
+	switch v := t.(type) {
+	// * TODO: slice, map
+	case *types.Map:
+		return way("map")
+	case *types.Slice:
+		return way("slice")
+	case *types.Basic:
+		if isScalar(v.Kind()) {
+			return way("scalar")
+		}
 	}
 
-}
-
-func isBasicType(t types.Type) *types.Basic {
-	if v, ok := t.(*types.Basic); ok {
-		return v
-	}
-	return nil
+	return "unsupported"
 }
 
 // structFromGenDecl transforms [*ast.GenDecl] to [*ast.StructType] declaration.
@@ -244,7 +246,7 @@ func hasComment(comment string, decl *ast.GenDecl) bool {
 
 type ResetStruct struct {
 	Name             string
-	FieldsByResetWay map[way][]string
+	FieldsByResetWay map[way][]resetField
 }
 
 type way string
@@ -324,4 +326,16 @@ func toFilter[T any](sliceOf []T, meets func(T) bool) (subSliceOf []T) {
 	}
 
 	return subSliceOf
+}
+
+func mapToSlice[M map[K]V1, K comparable, V1 any, V2 any](fromMap M, transform func(K, V1) V2) (sliceOf []V2) {
+	sliceOf = make([]V2, len(fromMap))
+
+	var i int
+	for k, v := range fromMap {
+		sliceOf[i] = transform(k, v)
+		i++
+	}
+
+	return sliceOf
 }
