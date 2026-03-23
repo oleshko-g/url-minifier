@@ -91,6 +91,7 @@ func generateResetMethods(pkg *packages.Package) error {
 	return nil
 }
 
+// findStructTypeDeclsToReset returns struct type declarations marked with the `// generate:reset` comment.
 func findStructTypeDeclsToReset(pkgFiles []*ast.File) (structTypes map[*ast.Ident]*ast.StructType) {
 
 	for _, file := range pkgFiles {
@@ -139,8 +140,6 @@ func generateResetMethod(wr io.Writer, name string, fields []*ast.Field) error {
 	_, _ = wr, fields
 	return nil
 }
-
-// structTypesToReset returns struct types marked with `// generate:reset` comment.
 
 // resetStructs return a [ResetStruct] slice to feed into a template to generate the Reset method
 func resetStructs(structTypes map[*ast.Ident]*types.Struct) []ResetStruct {
