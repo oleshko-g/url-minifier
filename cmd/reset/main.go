@@ -168,11 +168,13 @@ func fieldsByResetWay(fields iter.Seq[*types.Var]) map[way][]resetField {
 		}
 
 		fieldsByResetWay[resetWay] = append(fieldsByResetWay[resetWay], resetField{
-			typeName:  field.Id(),
+			// type name relative to the field package
+			typeName:  types.TypeString(field.Type(), types.RelativeTo(field.Pkg())),
 			fieldName: field.Name(),
 		})
 
 	}
+
 	return fieldsByResetWay
 }
 
@@ -203,9 +205,9 @@ func isScalar(t types.BasicKind) bool {
 }
 
 func resetWay(t types.Type) way {
-
 	switch v := t.(type) {
-	// * TODO: slice, map
+	case *types.Pointer:
+		return way("ptr")
 	case *types.Map:
 		return way("map")
 	case *types.Slice:

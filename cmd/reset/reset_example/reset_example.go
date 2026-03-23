@@ -7,8 +7,10 @@ type myBool bool
 // generate:reset
 type genStruct struct {
 	s  string
+	sp *string
 	i  int
 	mb myBool
 	sf []float64
 	m  map[string]genStruct
+	f  func()
 }
