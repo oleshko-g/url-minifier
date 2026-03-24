@@ -261,10 +261,8 @@ type scalar interface {
 	~bool | ~string | ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~complex64 | ~complex128
 }
 
-type zeroer[T scalar] struct{}
-
-func (z zeroer[T]) zero() T {
-	var v T
+func zero[S scalar]() S {
+	var v S
 	return v
 }
 
@@ -272,24 +270,35 @@ func truncate[T any](v []T) []T {
 	return v[:0]
 }
 
-{{range .ResetStructs}}
+{{range $resetStruct := .ResetStructs -}}
 
 // Reset sets the {{.Name}}
 func ({{.Rcv}} *{{.Name}}) Reset() {
 	if {{.Rcv}} == nil {
 		return
 	}
+{{range $resetWay, $fields := .FieldsByResetWay -}}
 
-	{{range $key, $value := .FieldsByResetWay}}
-		{{if eq $key "scalar"}}
-			{{range .$value}}
-				{{- .Rcv}}.{{.FieldName}} = zeroer[{{.TypeName}}].zero()
-			{{end}}
-		{{end}}
-	{{end}}
+{{if eq $resetWay "map"}}
+	{{range $fields -}}
+		clear({{$resetStruct.Rcv}}.{{.FieldName}})
+	{{end -}}
+{{end -}}
 
-}
-{{end}}`
+{{if eq $resetWay "scalar"}}
+	{{range $fields -}}
+		{{- $resetStruct.Rcv}}.{{.FieldName}} = zero[{{.TypeName}}]()
+	{{end -}}
+{{end -}}
+
+{{- if eq $resetWay "slice"}}
+	{{range $fields}}
+		{{- $resetStruct.Rcv}}.{{.FieldName}} = truncate({{$resetStruct.Rcv}}.{{.FieldName}})
+	{{end -}}
+{{end -}}
+
+{{- end}}
+}{{end}}`
 )
 
 func sliceToSlice[T1 any, T2 any](sliceOf []T1, transform func(from T1) (to T2)) []T2 {
