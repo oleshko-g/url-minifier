@@ -14,6 +14,7 @@ import (
 
 	"github.com/oleshko-g/url-minifier/internal/transform"
 	"golang.org/x/tools/go/packages"
+	"golang.org/x/tools/imports"
 )
 
 func main() {
@@ -84,10 +85,16 @@ func generateResetMethods(pkg *packages.Package) error {
 
 		path := path.Join(pkg.Dir, "reset.gen.go")
 
-		err = os.WriteFile(path, b.Bytes(), 0o755)
+		formatted, err := goImports(b.Bytes())
 		if err != nil {
 			return err
 		}
+
+		err = os.WriteFile(path, formatted, 0o755)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil
@@ -260,44 +267,52 @@ func truncate[T any](v []T) []T {
 
 // Reset sets the {{.Name}}
 func ({{.Rcv}} *{{.Name}}) Reset() {
-	if {{.Rcv}} == nil {
-		return
-	}
+if {{.Rcv}} == nil {
+return
+}
 {{range $resetWay, $fields := .FieldsByResetWay -}}
 
 {{if eq $resetWay "map"}}
-	{{range $fields -}}
-		clear({{$resetStruct.Rcv}}.{{.FieldName}})
-	{{end -}}
+{{range $fields -}}
+clear({{$resetStruct.Rcv}}.{{.FieldName}})
+{{end -}}
 {{end -}}
 
 {{if eq $resetWay "scalar"}}
-	{{range $fields -}}
-		{{- $resetStruct.Rcv}}.{{.FieldName}} = zero[{{.TypeName}}]()
-	{{end -}}
+{{range $fields -}}
+{{- $resetStruct.Rcv}}.{{.FieldName}} = zero[{{.TypeName}}]()
+{{end -}}
 {{end -}}
 
 {{- if eq $resetWay "scalarPtr"}}
-	{{- range $field := $fields}}
-	{{with $baseTypeName := slice $field.TypeName 1 -}}
-	*{{- $resetStruct.Rcv}}.{{$field.FieldName}} = zero[{{$baseTypeName}}]()
-	{{end -}}
-	{{end -}}
+{{- range $field := $fields}}
+{{with $baseTypeName := slice $field.TypeName 1 -}}
+*{{- $resetStruct.Rcv}}.{{$field.FieldName}} = zero[{{$baseTypeName}}]()
+{{end -}}
+{{end -}}
 {{end -}}
 
 {{- if eq $resetWay "slice"}}
-	{{range $fields}}
-		{{- $resetStruct.Rcv}}.{{.FieldName}} = truncate({{$resetStruct.Rcv}}.{{.FieldName}})
-	{{end -}}
+{{range $fields}}
+{{- $resetStruct.Rcv}}.{{.FieldName}} = truncate({{$resetStruct.Rcv}}.{{.FieldName}})
+{{end -}}
 {{end -}}
 
 {{- if eq $resetWay "struct"}}
-	{{- range $fields}}
-	if resetter, ok := any({{$resetStruct.Rcv}}.{{.FieldName}}).(Resetter); ok {
-	    resetter.Reset()
-	}
-	{{end -}}
+{{- range $fields}}
+if resetter, ok := any({{$resetStruct.Rcv}}.{{.FieldName}}).(Resetter); ok {
+resetter.Reset()
+}
+{{end -}}
 {{end -}}
 
 {{- end}}
 }{{end}}`
+
+func goImports(src []byte) ([]byte, error) {
+	return imports.Process("", src, &imports.Options{
+		Comments:   true,
+		TabIndent:  true,
+		FormatOnly: true,
+	})
+}
