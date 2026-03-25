@@ -1,4 +1,4 @@
-package reset_example
+package example
 
 type myBool bool
 
