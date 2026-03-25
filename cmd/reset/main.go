@@ -1,3 +1,10 @@
+// Package reset provides a command line tool to generate Reset() method for each struct with magic "// generate:reset" on the above line.
+// The fields of a struct are reset in the following way:
+//  - the scalar Go builtin types or pointers to the scalar Go builtin types or custom named types that are based on them are reset to their zero value;
+//  - slices are truncated;
+//  - maps are cleared;
+//  - If a struct field implements Reset() method then Reset() is called;
+//  - chan or func fields are left unchanged.
 package main
 
 import (
@@ -18,8 +25,10 @@ import (
 )
 
 func main() {
-	// dirPath := os.Args[:1]
-	dirPath := "../../"
+	dirPath := "."
+	if len(os.Args) == 2 {
+		dirPath = os.Args[1]
+	}
 
 	pkgs, err := loadPackages(dirPath)
 	if err != nil {
