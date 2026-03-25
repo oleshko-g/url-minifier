@@ -12,6 +12,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/oleshko-g/url-minifier/internal/transform"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -57,11 +58,11 @@ func generateResetMethods(pkg *packages.Package) error {
 		return nil
 	}
 
-	structTypes := mapToMap(
+	structTypes := transform.MapToMap(structTypeDecls,
 		func(structTypeDecl *ast.StructType) *types.Struct {
 			// find [types.Type] by declaration and assert to [types.Struct]
 			return pkg.TypesInfo.Types[structTypeDecl].Type.(*types.Struct)
-		}, structTypeDecls)
+		})
 
 	resetStructs := resetStructs(structTypes)
 	if resetStructs != nil {
@@ -123,9 +124,9 @@ type ResetStruct struct {
 	FieldsByResetWay map[way][]ResetField
 }
 
-// resetStructs return a [ResetStruct] slice to feed into a template to generate the Reset method
+// resetStructs returns a [ResetStruct] slice to feed into a template to generate the Reset method
 func resetStructs(structTypes map[*ast.Ident]*types.Struct) []ResetStruct {
-	resetStructs := mapToSlice(structTypes,
+	resetStructs := transform.MapToSlice(structTypes,
 		func(ident *ast.Ident, structType *types.Struct) ResetStruct {
 			return ResetStruct{
 				Rcv:              strings.ToLower(ident.Name[:1]),
@@ -300,56 +301,3 @@ func ({{.Rcv}} *{{.Name}}) Reset() {
 
 {{- end}}
 }{{end}}`
-
-func sliceToSlice[T1 any, T2 any](sliceOf []T1, transform func(from T1) (to T2)) []T2 {
-	result := make([]T2, len(sliceOf))
-	for i, v := range sliceOf {
-		result[i] = transform(v)
-	}
-
-	return result
-}
-
-// mapToMap transform a KV1 map to a KV2 map
-func mapToMap[K comparable, V1 any, V2 any](transform func(V1) V2, from map[K]V1) (to map[K]V2) {
-	to = make(map[K]V2)
-
-	for k, v := range from {
-		to[k] = transform(v)
-	}
-	return to
-}
-
-func toFilter[T any](sliceOf []T, meets func(T) bool) (subSliceOf []T) {
-	for _, v := range sliceOf {
-		if meets(v) {
-			subSliceOf = append(subSliceOf, v)
-		}
-	}
-
-	return subSliceOf
-}
-
-func mapToSlice[M map[K]V1, K comparable, V1 any, V2 any](fromMap M, transform func(K, V1) V2) (sliceOf []V2) {
-	sliceOf = make([]V2, len(fromMap))
-
-	var i int
-	for k, v := range fromMap {
-		sliceOf[i] = transform(k, v)
-		i++
-	}
-
-	return sliceOf
-}
-
-func group[E any, K comparable, V any](slice []E, f func(E) (k K, vv []V)) map[K][]V {
-	m := make(map[K][]V)
-
-	for _, v := range slice {
-		if k, vv := f(v); vv != nil {
-			m[k] = append(m[k], vv...)
-		}
-	}
-
-	return m
-}
