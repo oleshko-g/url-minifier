@@ -13,4 +13,8 @@ type genStruct struct {
 	sf []float64
 	m  map[string]genStruct
 	f  func()
+	ch chan struct{}
+	a  any
+	st struct{}
+	st2 struct{}
 }

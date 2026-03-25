@@ -197,6 +197,8 @@ func resetWay(t types.Type) way {
 		if isScalar(v.Kind()) {
 			return way("scalar")
 		}
+	case *types.Struct:
+		return way("struct")
 	}
 
 	return "unsupported"
@@ -294,6 +296,14 @@ func ({{.Rcv}} *{{.Name}}) Reset() {
 {{- if eq $resetWay "slice"}}
 	{{range $fields}}
 		{{- $resetStruct.Rcv}}.{{.FieldName}} = truncate({{$resetStruct.Rcv}}.{{.FieldName}})
+	{{end -}}
+{{end -}}
+
+{{- if eq $resetWay "struct"}}
+	{{- range $fields}}
+	if resetter, ok := any({{$resetStruct.Rcv}}.{{.FieldName}}).(Resetter); ok {
+	    resetter.Reset()
+	}
 	{{end -}}
 {{end -}}
 
