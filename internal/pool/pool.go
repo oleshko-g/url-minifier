@@ -7,9 +7,14 @@ import (
 	"github.com/oleshko-g/url-minifier/cmd/reset/example"
 )
 
-func New[R resetter]() *Pool[R] {
-	return &Pool[R]{
-		internal: sync.Pool{},
+func New[T resetter]() *Pool[T] {
+	return &Pool[T]{
+		internal: sync.Pool{
+			New: func() any {
+				var t T
+				return any(t)
+			},
+		},
 	}
 }
 
@@ -23,6 +28,7 @@ func (p *Pool[T]) Get() T {
 }
 
 func (p *Pool[T]) Put(t T) {
+	t.Reset()
 	p.internal.Put(t)
 }
 

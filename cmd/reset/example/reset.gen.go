@@ -20,8 +20,8 @@ func truncate[T any](v []T) []T {
 	return v[:0]
 }
 
-// Reset sets the genStruct
-func (g *genStruct) Reset() {
+// Reset sets the GenStruct
+func (g *GenStruct) Reset() {
 	if g == nil {
 		return
 	}
@@ -32,7 +32,9 @@ func (g *genStruct) Reset() {
 	g.i = zero[int]()
 	g.mb = zero[myBool]()
 
-	*g.sp = zero[string]()
+	if g.sp != nil {
+		*g.sp = zero[string]()
+	}
 
 	g.sf = truncate(g.sf)
 
