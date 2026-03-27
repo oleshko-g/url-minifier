@@ -19,6 +19,7 @@ import (
 var a app
 
 func main() {
+	printBuildInfo()
 	if err := a.setup(); err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
