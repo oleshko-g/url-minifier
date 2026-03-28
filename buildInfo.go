@@ -11,9 +11,10 @@ var (
 )
 
 func printBuildInfo() {
-	bi, _ := debug.ReadBuildInfo()
-	buildVersion = bi.Main.Version
-	buildCommit = getBuildSetting(bi.Settings, "vcs.revision")
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		buildVersion = bi.Main.Version
+		buildCommit = getBuildSetting(bi.Settings, "vcs.revision")
+	}
 
 	fmt.Println(fmt.Sprint("Build version: ", cmp.Or(buildVersion, "N/A")))
 	fmt.Println(fmt.Sprint("Build date: ", cmp.Or(buildDate, "N/A")))
