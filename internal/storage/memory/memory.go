@@ -14,20 +14,16 @@ import (
 )
 
 // NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
-func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
+func NewStrRecords() storage.StoragePinger { // revive:disable-line:unexported-return provides the interface to the caller
 	uks := make(userKeys)
-	records := &strRecords{
-		mux:      sync.RWMutex{},
-		userKeys: uks,
-		values:   make(values),
-	}
+	records := storage.NewStoragePingerNoOp(
+		&strRecords{
+			mux:      sync.RWMutex{},
+			userKeys: uks,
+			values:   make(values),
+		})
 
 	return records
-}
-
-// Ping is no-op for [strRecords]
-func (s *strRecords) Ping() error {
-	return nil
 }
 
 type (
@@ -64,7 +60,10 @@ var _ storage.Storager = (*strRecords)(nil)
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	s.save(key, value)
+	err := s.save(key, value)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

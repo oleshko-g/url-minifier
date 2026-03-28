@@ -25,7 +25,7 @@ type testMinifierResponse struct {
 type testApp struct {
 	minifierConfig minifier.Config
 	Config
-	storage.Storager
+	storage.StoragePinger
 	*minifier.Service
 	*Server
 }
@@ -33,10 +33,10 @@ type testApp struct {
 func newTestApp() *testApp {
 	var ta testApp
 
-	ta.Storager = memory.NewStrRecords()
+	ta.StoragePinger = memory.NewStrRecords()
 	ta.minifierConfig.MaxLen = 8
 	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
-	ta.Service = minifier.New(ta.Storager, &ta.minifierConfig)
+	ta.Service = minifier.New(ta.StoragePinger, &ta.minifierConfig)
 	ta.Server = NewServer(ta.Service, &ta.Config)
 	return &ta
 }
@@ -121,7 +121,7 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta.Storager.Save(tt.minifiedID, tt.originalURL)
+			ta.StoragePinger.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)

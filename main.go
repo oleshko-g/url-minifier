@@ -19,6 +19,7 @@ import (
 var a app
 
 func main() {
+	printBuildInfo()
 	if err := a.setup(); err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
@@ -31,7 +32,7 @@ type app struct {
 	fileConfig     file.Config
 	minifierConfig minifier.Config
 	httpConfig     http.Config
-	storage.Storager
+	storage.StoragePinger
 	*minifier.Service
 	*http.Server
 }
@@ -105,13 +106,13 @@ func (a *app) setup() (err error) {
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {
-		a.Storager, err = sql.New(a.sqlConfig)
+		a.StoragePinger, err = sql.New(a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
-		a.Storager, err = file.New(&a.fileConfig)
+		a.StoragePinger, err = file.New(&a.fileConfig)
 		slog.Info("The storage is set to file.")
 	} else {
-		a.Storager = memory.NewStrRecords()
+		a.StoragePinger = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	}
 
@@ -119,7 +120,7 @@ func (a *app) setup() (err error) {
 		return err
 	}
 
-	a.Service = minifier.New(a.Storager, &a.minifierConfig)
+	a.Service = minifier.New(a.StoragePinger, &a.minifierConfig)
 	a.Server = http.NewServer(a.Service, &a.httpConfig)
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL().String()))
