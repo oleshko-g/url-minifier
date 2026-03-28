@@ -1,11 +1,7 @@
 // Package pool provides generic [Pool] of structs that can Reset() themselves before returning into the pool
-package main
+package pool
 
-import (
-	"sync"
-
-	"github.com/oleshko-g/url-minifier/cmd/reset/example"
-)
+import 	"sync"
 
 func New[T resetter]() *Pool[T] {
 	return &Pool[T]{
@@ -34,16 +30,4 @@ func (p *Pool[T]) Put(t T) {
 
 type resetter interface {
 	Reset()
-}
-
-func f() {
-	pool := New[*example.GenStruct]()
-	nill := pool.Get()
-	pool.Put(&example.GenStruct{})
-
-	_, _ = pool, nill
-}
-
-func main() {
-	f()
 }
