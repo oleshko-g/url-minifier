@@ -103,6 +103,7 @@ func (a *app) setup() (err error) {
 	flag.Var(a.httpConfig.Address(), "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
 	flag.Var(a.httpConfig.AuditFile(), "audit-file", "Sets the file to write audit logs to")
 	flag.Var(a.httpConfig.AuditURL(), "audit-url", "Sets the URL to write audit logs to")
+	flag.Var(a.httpConfig.Secured(), "s", "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol")
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {

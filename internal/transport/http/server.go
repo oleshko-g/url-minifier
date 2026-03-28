@@ -51,11 +51,11 @@ type logger interface {
 }
 
 // NewServer configures and returns an internal [http.Server]
-func NewServer(s Service, cp *Config) *Server {
+func NewServer(s Service, cfg *Config) *Server {
 	srv := &Server{
 		Service: s,
 		server:  &http.Server{},
-		Config:  cp,
+		Config:  cfg,
 	}
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
@@ -82,12 +82,12 @@ func NewServer(s Service, cp *Config) *Server {
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
 
-	if cp.auditFile.enabled {
-		srv.auditors = append(srv.auditors, &cp.auditFile)
+	if cfg.auditFile.enabled {
+		srv.auditors = append(srv.auditors, &cfg.auditFile)
 	}
 
-	if cp.auditURL.enabled {
-		srv.auditors = append(srv.auditors, &cp.auditURL)
+	if cfg.auditURL.enabled {
+		srv.auditors = append(srv.auditors, &cfg.auditURL)
 	}
 
 	srv.server.Handler = r
@@ -109,6 +109,11 @@ func (s *Server) ListenAndServe() error {
 
 	s.server.Addr = s.Address().String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
+
+	if s.secured {
+		// * TODO: add certFile, keyFile?
+		return s.server.ListenAndServeTLS("","")
+	}
 
 	return s.server.ListenAndServe()
 }

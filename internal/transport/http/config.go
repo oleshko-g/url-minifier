@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -18,6 +19,7 @@ type Config struct {
 	canDecompress map[coding]struct{}
 	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
 	secretKey     secret
+	secured       secured
 	auditFile
 	auditURL
 }
@@ -40,6 +42,11 @@ func (c *Config) AuditFile() *auditFile { // revive:disable-line:unexported-retu
 // AuditURL returns a pointer to the [flag.Value] to set up the [Server]
 func (c *Config) AuditURL() *auditURL { // revive:disable-line:unexported-return provides the interface to the caller
 	return &c.auditURL
+}
+
+// Secured returns a pointer to the [flag.Value] to set up the [Server]
+func (c *Config) Secured() *secured { // revive:disable-line:unexported-return provides the interface to the caller
+	return &c.secured
 }
 
 type codings []coding
@@ -97,4 +104,24 @@ func (sec secret) String() string {
 func (sec *secret) Set(s string) error {
 	*sec = secret(s)
 	return nil
+}
+
+type secured bool
+
+func (se *secured) Set(s string) error {
+	v, err := strconv.ParseBool(s)
+	if err != nil {
+		return err
+	}
+
+	*se = secured(v)
+	return nil
+}
+
+func (se *secured) String() string {
+	if se != nil {
+		return fmt.Sprint(*se)
+	}
+
+	return ""
 }
