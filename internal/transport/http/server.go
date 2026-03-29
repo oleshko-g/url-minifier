@@ -2,6 +2,8 @@ package http //revive:disable-line:var-naming
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,6 +61,12 @@ func NewServer(s Service, cfg *Config) *Server {
 	}
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
+
+	if *srv.Config.Secured.Value {
+		srv.server.TLSConfig = &tls.Config{
+			Rand: rand.Reader,
+		}
+	}
 
 	srv.logger = slog.New(slog.Default().Handler())
 
