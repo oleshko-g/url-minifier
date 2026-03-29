@@ -19,21 +19,21 @@ import (
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
 func New(dbCfg db.Config) (*Storage, error) {
-	db, err := connectDB(string(dbCfg.DriverName), dbCfg.DSN().String())
+	db, err := connectDB(string(dbCfg.DSN.Value.DriverName), dbCfg.DSN.String())
 	if err != nil {
 		err = createDB(dbCfg)
 		if err != nil {
 			return nil, err
 		}
 
-		db, err = connectDB(string(dbCfg.DriverName), dbCfg.DSN().String())
+		db, err = connectDB(string(dbCfg.DSN.Value.DriverName), dbCfg.DSN.String())
 		if err != nil {
 			return nil, err
 		}
 
 	}
 
-	if err = schema.Up(dbCfg.DSN().DriverName, db); err != nil {
+	if err = schema.Up(dbCfg.DSN.Value.DriverName, db); err != nil {
 		return nil, err
 	}
 
@@ -260,7 +260,7 @@ func (s *Storage) TearDown() error {
 }
 
 func (s *Storage) drop() error {
-	defaultDB, err := connectDB(string(s.DriverName), s.DefaultDSN)
+	defaultDB, err := connectDB(string(s.DSN.Value.DriverName), s.DSN.Value.DefaultDSN)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (s *Storage) drop() error {
 	}
 
 	ctx := context.Background()
-	q := fmt.Sprintf("DROP DATABASE %s;", s.DBName)
+	q := fmt.Sprintf("DROP DATABASE %s;", s.DSN.Value.DBName)
 	_, err = defaultDB.ExecContext(ctx, q)
 	if err != nil {
 		return err
@@ -282,13 +282,13 @@ func (s *Storage) drop() error {
 }
 
 func createDB(dbCfg db.Config) error {
-	defaultDB, err := connectDB(string(dbCfg.DriverName), dbCfg.DefaultDSN)
+	defaultDB, err := connectDB(string(dbCfg.DSN.Value.DriverName), dbCfg.DSN.Value.DefaultDSN)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
-	q := fmt.Sprintf("CREATE DATABASE %s;", dbCfg.DBName)
+	q := fmt.Sprintf("CREATE DATABASE %s;", dbCfg.DSN.Value.DBName)
 	_, err = defaultDB.ExecContext(ctx, q)
 	if err != nil {
 		return err

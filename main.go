@@ -40,6 +40,7 @@ type app struct {
 func (a *app) setup() (err error) {
 	// Set the default config values
 	a.httpConfig = http.NewConfig()
+	a.sqlConfig = db.New()
 
 	err = a.fileConfig.Path().Set(string(file.DefaultFilepath))
 	if err != nil {
@@ -59,7 +60,7 @@ func (a *app) setup() (err error) {
 	godotenv.Load(".env")
 	if dbConn := os.Getenv("DATABASE_DSN"); dbConn != "" {
 		// sets err func (a *app) setup()
-		if err = a.sqlConfig.DSN().Set(dbConn); err != nil {
+		if err = a.sqlConfig.DSN.Set(dbConn); err != nil {
 			return err
 		}
 	}
@@ -98,7 +99,7 @@ func (a *app) setup() (err error) {
 	}
 
 	// set flags
-	flag.Var(a.sqlConfig.DSN(), "d", "Set the sql db connection string")
+	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.Path(), "f", fmt.Sprintf("Default: `%s`. Set the file path for the file storage", file.DefaultFilepath))
 	flag.Var(a.minifierConfig.BaseURL(), "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
 	flag.Var(a.httpConfig.Address, a.httpConfig.Address.Name, a.httpConfig.Address.Description)
@@ -108,7 +109,7 @@ func (a *app) setup() (err error) {
 	// If flags are present then [flag.Parse] overrides defaults or env vars.
 	flag.Parse()
 
-	if a.sqlConfig.String() != "" {
+	if a.sqlConfig.DSN.String() != "" {
 		a.StoragePinger, err = sql.New(a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.Path().String() != "" {
