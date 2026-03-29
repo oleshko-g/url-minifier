@@ -57,7 +57,7 @@ func (s *Service) MinifyURL(ctx context.Context, userID, originalURL string) (mi
 }
 
 func (s *Service) newMinifiedURL(minifiedID string) string {
-	return s.Config.BaseURL().String() + "/" + minifiedID
+	return s.Config.BaseURL.String() + "/" + minifiedID
 }
 
 // UnMinifyURL takes an id of the minified URL and returns the stored original URL or an error

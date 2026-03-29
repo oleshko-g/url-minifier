@@ -43,6 +43,10 @@ func NewConfig() *Config {
 			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
 			Source:      "CONFIG_FILE",
 		},
+		SecretKey: config.Option[*secret]{
+			Value: new(secret),
+		},
+
 	}
 }
 

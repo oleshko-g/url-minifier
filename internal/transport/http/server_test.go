@@ -23,8 +23,8 @@ type testMinifierResponse struct {
 }
 
 type testApp struct {
-	minifierConfig minifier.Config
-	Config
+	minifierConfig *minifier.Config
+	*Config
 	storage.StoragePinger
 	*minifier.Service
 	*Server
@@ -34,10 +34,11 @@ func newTestApp() *testApp {
 	var ta testApp
 
 	ta.StoragePinger = memory.NewStrRecords()
-	ta.minifierConfig.MaxLen = 8
-	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
-	ta.Service = minifier.New(ta.StoragePinger, &ta.minifierConfig)
-	ta.Server = NewServer(ta.Service, &ta.Config)
+	ta.minifierConfig = minifier.NewConfig()
+	ta.Service = minifier.New(ta.StoragePinger, ta.minifierConfig)
+	ta.Config = NewConfig()
+	ta.Config.Address.Set(ta.Config.Address.Default)
+	ta.Server = NewServer(ta.Service, ta.Config)
 	return &ta
 }
 
@@ -58,7 +59,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 				statusCode: 201,
 				headers: map[string]string{
 					"Content-Type":   "text/plain",
-					"Content-Length": strconv.Itoa(len(ta.Service.BaseURL().String()) + 12),
+					"Content-Length": strconv.Itoa(len(ta.Service.BaseURL.String()) + 12),
 				},
 			},
 		},
@@ -66,7 +67,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.want.body = []byte(ta.Service.Config.BaseURL().String() + "/" + tt.minifiedID)
+			tt.want.body = []byte(ta.Service.Config.BaseURL.String() + "/" + tt.minifiedID)
 
 			req := httptest.NewRequest("POST", "/", bytes.NewBuffer([]byte("https://practicum.yandex.ru/")))
 			req.Header.Set("Content-Type", "text/plain")
@@ -168,7 +169,7 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// set wanted response body
-			resData, err := json.Marshal(minifyURLResponse{Result: ta.Service.BaseURL().String() + "/" + tt.minifiedID})
+			resData, err := json.Marshal(minifyURLResponse{Result: ta.Service.BaseURL.String() + "/" + tt.minifiedID})
 			require.NoError(t, err)
 			tt.want.body = resData
 

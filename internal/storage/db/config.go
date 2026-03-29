@@ -8,8 +8,8 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-// New returns a new [Config] with default values
-func New() Config {
+// NewConfig returns a new [Config] with default values
+func NewConfig() Config {
 	return Config{
 		DSN: config.Option[*dataSource]{
 			Name:        "d",

@@ -4,17 +4,28 @@ package minifier
 import (
 	"fmt"
 	"net/url"
+
+	"github.com/oleshko-g/url-minifier/internal/config"
 )
+
+// NewConfig returns a new [Config] with the default values
+func NewConfig() *Config {
+	defaultBaseURL := "http://localhost:8080"
+	return &Config{
+		BaseURL: config.Option[*baseURL]{
+			Name:        "base-url",
+			Value:       new(baseURL),
+			Description: fmt.Sprintf("Default: `%s`. Set the base URL for minified URLs", defaultBaseURL),
+			Default:     defaultBaseURL,
+		},
+		MaxLen: 8,
+	}
+}
 
 // Config contains fields and [flag.Value]s to set up the URL minifier
 type Config struct {
-	baseURL baseURL // domain parameter because the http server host address could be different
+	BaseURL config.Option[*baseURL] // domain parameter because the http server host address could be different
 	MaxLen  int
-}
-
-// BaseURL returns a pointer to baseURL unexported type. Getter is used in case the structure of baseURL changes
-func (c *Config) BaseURL() *baseURL { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.baseURL
 }
 
 type baseURL struct {
