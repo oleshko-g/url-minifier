@@ -93,7 +93,7 @@ func (s *Server) authenticate(req *http.Request) (string, error) {
 }
 
 func (s *Server) newAuthToken(uid string) (string, error) {
-	signature, err := sign(uid, string(s.secretKey))
+	signature, err := sign(uid, s.SecretKey.String())
 	if err != nil {
 		return "", nil
 	}

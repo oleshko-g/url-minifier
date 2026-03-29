@@ -82,12 +82,12 @@ func NewServer(s Service, cfg *Config) *Server {
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
 
-	if cfg.auditFile.enabled {
-		srv.auditors = append(srv.auditors, &cfg.auditFile)
+	if cfg.AuditFile.Value.enabled {
+		srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
 	}
 
-	if cfg.auditURL.enabled {
-		srv.auditors = append(srv.auditors, &cfg.auditURL)
+	if cfg.AuditURL.Value.enabled {
+		srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
 	}
 
 	srv.server.Handler = r
@@ -107,12 +107,12 @@ func (s *Server) ListenAndServe() error {
 		}
 	}
 
-	s.server.Addr = s.Address().String()
+	s.server.Addr = s.Address.String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
 
-	if s.secured {
+	if *s.Secured.Value {
 		// * TODO: add certFile, keyFile?
-		return s.server.ListenAndServeTLS("","")
+		return s.server.ListenAndServeTLS("", "")
 	}
 
 	return s.server.ListenAndServe()

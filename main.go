@@ -31,7 +31,7 @@ type app struct {
 	sqlConfig      db.Config
 	fileConfig     file.Config
 	minifierConfig minifier.Config
-	httpConfig     http.Config
+	httpConfig     *http.Config
 	storage.StoragePinger
 	*minifier.Service
 	*http.Server
@@ -39,6 +39,7 @@ type app struct {
 
 func (a *app) setup() (err error) {
 	// Set the default config values
+	a.httpConfig = http.NewConfig()
 
 	err = a.fileConfig.Path().Set(string(file.DefaultFilepath))
 	if err != nil {
@@ -48,7 +49,7 @@ func (a *app) setup() (err error) {
 	if err != nil {
 		return err
 	}
-	err = a.httpConfig.Address().Set("localhost:8080")
+	err = a.httpConfig.Address.Set(a.httpConfig.Address.Default)
 	if err != nil {
 		return err
 	}
@@ -76,34 +77,35 @@ func (a *app) setup() (err error) {
 		a.minifierConfig.BaseURL().Source = "ENV"
 	}
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
-		if err = a.httpConfig.Address().Set(serverAddress); err != nil {
+		if err = a.httpConfig.Address.Set(serverAddress); err != nil {
 			return err
 		}
-		a.httpConfig.Address().Source = "ENV"
+		a.httpConfig.Address.Source = "ENV"
 	}
 
 	if auditFile := os.Getenv("AUDIT_FILE"); auditFile != "" {
-		if err = a.httpConfig.AuditFile().Set(auditFile); err != nil {
+		if err = a.httpConfig.AuditFile.Set(auditFile); err != nil {
 			return err
 		}
-		a.httpConfig.AuditFile().Source = "ENV"
+		a.httpConfig.AuditFile.Source = "ENV"
 	}
 
 	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
-		if err = a.httpConfig.AuditFile().Set(auditURL); err != nil {
+		if err = a.httpConfig.AuditFile.Set(auditURL); err != nil {
 			return err
 		}
-		a.httpConfig.AuditURL().Source = "ENV"
+		a.httpConfig.AuditURL.Source = "ENV"
 	}
 
-	// sets flags
+	// set flags
 	flag.Var(a.sqlConfig.DSN(), "d", "Set the sql db connection string")
 	flag.Var(a.fileConfig.Path(), "f", fmt.Sprintf("Default: `%s`. Set the file path for the file storage", file.DefaultFilepath))
 	flag.Var(a.minifierConfig.BaseURL(), "b", "Default: `http://localhost:8080`. Set the base URL for minified URLs")
-	flag.Var(a.httpConfig.Address(), "a", "Default: `localhost:8080`. Sets the network address and the port for the minifier")
-	flag.Var(a.httpConfig.AuditFile(), "audit-file", "Sets the file to write audit logs to")
-	flag.Var(a.httpConfig.AuditURL(), "audit-url", "Sets the URL to write audit logs to")
-	flag.Var(a.httpConfig.Secured(), "s", "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol")
+	flag.Var(a.httpConfig.Address, a.httpConfig.Address.Name, a.httpConfig.Address.Description)
+	flag.Var(a.httpConfig.AuditFile, a.httpConfig.AuditFile.Name, a.httpConfig.AuditFile.Description)
+	flag.Var(a.httpConfig.AuditURL, a.httpConfig.AuditURL.Name, a.httpConfig.AuditURL.Description)
+	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
+	// If flags are present then [flag.Parse] overrides defaults or env vars.
 	flag.Parse()
 
 	if a.sqlConfig.String() != "" {
@@ -122,10 +124,10 @@ func (a *app) setup() (err error) {
 	}
 
 	a.Service = minifier.New(a.StoragePinger, &a.minifierConfig)
-	a.Server = http.NewServer(a.Service, &a.httpConfig)
+	a.Server = http.NewServer(a.Service, a.httpConfig)
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL().String()))
-	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.Server.Config.Address().String()))
+	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.Server.Config.Address.String()))
 
 	return nil
 }

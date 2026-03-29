@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/oleshko-g/url-minifier/internal/config"
 )
 
 // errParsingAddress indicates an error while parsing an address URL for an instance of http server
@@ -13,40 +15,46 @@ import (
 // [url-minifier]: https://github.com/oleshko-g/url-minifier
 var errParsingAddress = errors.New("error parsing address")
 
+// NewConfig returns a default HTTP server [Config].
+func NewConfig() *Config {
+	return &Config{
+		Address: config.Option[*address]{
+			Name:        "a",
+			Value:       new(address),
+			Default:     "localhost:8080",
+			Description: "Sets the network address and the port for the minifier",
+			Source:      "CONFIG_FILE",
+		},
+		AuditFile: config.Option[*auditFile]{
+			Name:        "audit-file",
+			Value:       new(auditFile),
+			Description: "Sets the file to write audit logs to",
+			Source:      "CONFIG_FILE",
+		},
+		AuditURL: config.Option[*auditURL]{
+			Name:        "audit-url",
+			Value:       new(auditURL),
+			Description: "Sets the URL to write audit logs to",
+			Source:      "CONFIG_FILE",
+		},
+		Secured: config.Option[*secured]{
+			Name:        "s",
+			Value:       new(secured),
+			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
+			Source:      "CONFIG_FILE",
+		},
+	}
+}
+
 // Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
-	address       address
-	canDecompress map[coding]struct{}
+	Address       config.Option[*address]
+	SecretKey     config.Option[*secret]
+	Secured       config.Option[*secured]
+	AuditFile     config.Option[*auditFile]
+	AuditURL      config.Option[*auditURL]
 	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
-	secretKey     secret
-	secured       secured
-	auditFile
-	auditURL
-}
-
-// Address returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) Address() *address { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.address
-}
-
-// SecretAuthKey returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) SecretAuthKey() *secret { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.secretKey
-}
-
-// AuditFile returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) AuditFile() *auditFile { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.auditFile
-}
-
-// AuditURL returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) AuditURL() *auditURL { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.auditURL
-}
-
-// Secured returns a pointer to the [flag.Value] to set up the [Server]
-func (c *Config) Secured() *secured { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.secured
+	canDecompress map[coding]struct{}
 }
 
 type codings []coding
@@ -64,12 +72,11 @@ func (c codings) String() string {
 }
 
 type address struct {
-	host   string
-	port   string
-	Source string
+	host string
+	port string
 }
 
-func (a address) String() string {
+func (a *address) String() string {
 	return a.host + ":" + a.port
 }
 
@@ -97,7 +104,7 @@ type secret string
 
 // String is secret
 func (sec secret) String() string {
-	return ""
+	return string(sec)
 }
 
 // Set sets the secret key of the minifier
@@ -118,10 +125,7 @@ func (se *secured) Set(s string) error {
 	return nil
 }
 
-func (se *secured) String() string {
-	if se != nil {
-		return fmt.Sprint(*se)
-	}
-
-	return ""
+func (se secured) String() string {
+	// current se value assignable to bool
+	return strconv.FormatBool(bool(se))
 }
