@@ -4,16 +4,27 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+
+	"github.com/oleshko-g/url-minifier/internal/config"
 )
+
+func NewConfig() *Config {
+	defaultFilepath := "minifiedURLs.json"
+
+	return &Config{
+		FilePath: config.Option[*path]{
+			Name:        "f",
+			Value:       new(path),
+			Default:     defaultFilepath,
+			Description: fmt.Sprintf("Default: `%s`. Set the file path for the file storage", defaultFilepath),
+			Source:      "CONFIG_FILE",
+		},
+	}
+}
 
 // Config represents a [file.File] config
 type Config struct {
-	fpath path
-}
-
-// Path returns a pointer to the [flag.Value] to set the [File]
-func (c *Config) Path() *path { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.fpath
+	FilePath config.Option[*path]
 }
 
 // path represents a valid file in a file system

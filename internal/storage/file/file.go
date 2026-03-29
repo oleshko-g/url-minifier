@@ -18,7 +18,7 @@ import (
 
 // New returns a pointer to an opened [File] or an error
 func New(c *Config) (file storage.StoragePinger, err error) {
-	fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+	fp, err := os.OpenFile(c.FilePath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -268,11 +268,6 @@ func (f *File) newRecordReader() (*recordReader, error) {
 		decoder: dep,
 	}, nil
 }
-
-// defaults
-const (
-	DefaultFilepath path = "minifiedURLs.json"
-)
 
 // UNIX permissions
 const (
