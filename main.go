@@ -99,6 +99,13 @@ func (a *app) setup() (err error) {
 		a.httpConfig.AuditURL.Source = "ENV"
 	}
 
+	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
+		if err = a.httpConfig.Secured.Set(secured); err != nil {
+			return err
+		}
+		a.httpConfig.Secured.Source = "ENV"
+	}
+
 	// set flags
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
