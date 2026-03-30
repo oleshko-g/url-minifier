@@ -2,8 +2,6 @@ package http //revive:disable-line:var-naming
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,13 +60,13 @@ func NewServer(s Service, cfg *Config) *Server {
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
-	if *srv.Config.Secured.Value {
-		srv.server.TLSConfig = &tls.Config{
-			Rand: rand.Reader,
+	srv.logger = slog.New(slog.Default().Handler())
+
+	if srv.Config.Secured.Value != nil {
+		if *srv.Config.Secured.Value {
+			srv.server.TLSConfig = TLSConfig()
 		}
 	}
-
-	srv.logger = slog.New(slog.Default().Handler())
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
@@ -90,12 +88,16 @@ func NewServer(s Service, cfg *Config) *Server {
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
 
-	if cfg.AuditFile.Value.enabled {
-		srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
+	if srv.Config.AuditFile.Value != nil {
+		if cfg.AuditFile.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
+		}
 	}
 
-	if cfg.AuditURL.Value.enabled {
-		srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
+	if srv.Config.AuditFile.Value != nil {
+		if cfg.AuditURL.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
+		}
 	}
 
 	srv.server.Handler = r
@@ -119,7 +121,6 @@ func (s *Server) ListenAndServe() error {
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
 
 	if *s.Secured.Value {
-		// * TODO: add certFile, keyFile?
 		return s.server.ListenAndServeTLS("", "")
 	}
 
