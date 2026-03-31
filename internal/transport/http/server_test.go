@@ -35,6 +35,7 @@ func newTestApp() *testApp {
 
 	ta.StoragePinger = memory.NewStrRecords()
 	ta.minifierConfig = minifier.NewConfig()
+	ta.minifierConfig.BaseURL.Set(ta.minifierConfig.BaseURL.Default)
 	ta.Service = minifier.New(ta.StoragePinger, ta.minifierConfig)
 	ta.Config = NewConfig()
 	ta.Config.Address.Set(ta.Config.Address.Default)
