@@ -71,12 +71,11 @@ func (a *app) setup() (err error) {
 			return err
 		}
 	}
-	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
-		// sets err func (a *app) setup()
-		if err = a.minifierConfig.BaseURL.Set(baseURL); err != nil {
+	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
+		if err = a.httpConfig.Secured.Set(secured); err != nil {
 			return err
 		}
-		a.minifierConfig.BaseURL.Source = "ENV"
+		a.httpConfig.Secured.Source = "ENV"
 	}
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
 		if err = a.httpConfig.Address.Set(serverAddress); err != nil {
@@ -98,22 +97,21 @@ func (a *app) setup() (err error) {
 		}
 		a.httpConfig.AuditURL.Source = "ENV"
 	}
-
-	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
-		if err = a.httpConfig.Secured.Set(secured); err != nil {
+	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
+		if err = a.minifierConfig.BaseURL.Set(baseURL); err != nil {
 			return err
 		}
-		a.httpConfig.Secured.Source = "ENV"
+		a.minifierConfig.BaseURL.Source = "ENV"
 	}
 
 	// set flags
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
-	flag.Var(a.minifierConfig.BaseURL, a.minifierConfig.BaseURL.Name, a.minifierConfig.BaseURL.Description)
+	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
 	flag.Var(a.httpConfig.Address, a.httpConfig.Address.Name, a.httpConfig.Address.Description)
 	flag.Var(a.httpConfig.AuditFile, a.httpConfig.AuditFile.Name, a.httpConfig.AuditFile.Description)
 	flag.Var(a.httpConfig.AuditURL, a.httpConfig.AuditURL.Name, a.httpConfig.AuditURL.Description)
-	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
+	flag.Var(a.minifierConfig.BaseURL, a.minifierConfig.BaseURL.Name, a.minifierConfig.BaseURL.Description)
 	// If flags are present then [flag.Parse] overrides defaults or env vars.
 	flag.Parse()
 

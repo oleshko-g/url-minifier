@@ -77,11 +77,11 @@ func (c codings) String() string {
 
 type address struct {
 	host string
-	port string
+	Port string
 }
 
 func (a *address) String() string {
-	return a.host + ":" + a.port
+	return a.host + ":" + a.Port
 }
 
 func (a *address) Set(s string) error {
@@ -94,10 +94,10 @@ func (a *address) Set(s string) error {
 	}
 
 	if a.host = url.Hostname(); url.Hostname() == "" {
-		return fmt.Errorf("%w: %s", errParsingAddress, "empty scheme")
+		return fmt.Errorf("%w: %s", errParsingAddress, "empty host")
 	}
 
-	if a.port = url.Port(); url.Port() == "" {
+	if a.Port = url.Port(); url.Port() == "" {
 		return fmt.Errorf("%w: %s", errParsingAddress, "empty port")
 	}
 

@@ -32,7 +32,6 @@ type baseURL struct {
 	scheme string
 	host   string
 	port   string
-	Source string
 }
 
 func (b baseURL) String() string {

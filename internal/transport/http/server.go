@@ -65,8 +65,11 @@ func NewServer(s Service, cfg *Config) *Server {
 	if srv.Config.Secured.Value != nil {
 		if *srv.Config.Secured.Value {
 			srv.server.TLSConfig = TLSConfig()
+			srv.Address.Value.Port = "443"
 		}
 	}
+
+	srv.server.Addr = srv.Address.String()
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
@@ -117,7 +120,6 @@ func (s *Server) ListenAndServe() error {
 		}
 	}
 
-	s.server.Addr = s.Address.String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
 
 	if *s.Secured.Value {
