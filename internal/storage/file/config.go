@@ -8,7 +8,6 @@ import (
 	"github.com/oleshko-g/url-minifier/internal/config"
 )
 
-
 // NewConfig returns a new [Config] with the default values
 func NewConfig() *Config {
 	defaultFilepath := "minifiedURLs.json"

@@ -46,7 +46,6 @@ func NewConfig() *Config {
 		SecretKey: config.Option[*secret]{
 			Value: new(secret),
 		},
-
 	}
 }
 
