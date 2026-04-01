@@ -13,7 +13,7 @@ func NewConfig() *Config {
 	defaultBaseURL := "http://localhost:8080"
 	return &Config{
 		BaseURL: config.Option[*baseURL]{
-			Name:        "base-url",
+			Name:        "b",
 			Value:       new(baseURL),
 			Description: fmt.Sprintf("Default: `%s`. Set the base URL for minified URLs", defaultBaseURL),
 			Default:     defaultBaseURL,
