@@ -294,6 +294,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewServer(tt.s, &Config{})
+			//			s := NewServer(tt.s, NewConfig())
 			got, gotErr := s.chooseCompression(tt.parsedAcceptCodings)
 			assert.Equal(t, tt.want.error, gotErr)
 			assert.Equal(t, tt.want.coding, got)

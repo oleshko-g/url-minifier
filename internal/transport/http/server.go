@@ -69,7 +69,21 @@ func NewServer(s Service, cfg *Config) *Server {
 		}
 	}
 
-	srv.server.Addr = srv.Address.String()
+	if srv.Address.Value != nil {
+		srv.server.Addr = srv.Address.String()
+	}
+
+	if srv.Config.AuditFile.Value != nil {
+		if cfg.AuditFile.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
+		}
+	}
+
+	if srv.Config.AuditFile.Value != nil {
+		if cfg.AuditURL.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
+		}
+	}
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
@@ -90,19 +104,6 @@ func NewServer(s Service, cfg *Config) *Server {
 	})
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
-
-	if srv.Config.AuditFile.Value != nil {
-		if cfg.AuditFile.Value.enabled {
-			srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
-		}
-	}
-
-	if srv.Config.AuditFile.Value != nil {
-		if cfg.AuditURL.Value.enabled {
-			srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
-		}
-	}
-
 	srv.server.Handler = r
 
 	return srv

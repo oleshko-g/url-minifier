@@ -34,7 +34,7 @@ type baseURL struct {
 	port   string
 }
 
-func (b baseURL) String() string {
+func (b *baseURL) String() string {
 	return b.scheme + "://" + b.host + ":" + b.port
 }
 
