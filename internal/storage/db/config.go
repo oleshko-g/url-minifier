@@ -16,7 +16,7 @@ func NewConfig() Config {
 			Value:       new(dataSource),
 			Description: "Set the sql db connection string",
 			Default:     "",
-			Source:      "CONFIG_FILE",
+			Source:      config.SourceDefault,
 		},
 	}
 }

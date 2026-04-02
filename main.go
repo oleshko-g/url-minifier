@@ -63,49 +63,57 @@ func (a *app) setup() (err error) {
 
 	// If an env var is present then it overrides the default value or the flag value
 	godotenv.Load(".env")
+	if cfgFilePath := os.Getenv("CONFIG"); cfgFilePath != "" {
+		if err = a.configFilePath.Set(cfgFilePath); err != nil {
+			return err
+		}
+		a.configFilePath.Source = config.SourceEnv
+	}
 	if dbConn := os.Getenv("DATABASE_DSN"); dbConn != "" {
 		// sets err func (a *app) setup()
 		if err = a.sqlConfig.DSN.Set(dbConn); err != nil {
 			return err
 		}
+		a.sqlConfig.DSN.Source = config.SourceEnv
 	}
 	if filePath := os.Getenv("FILE_STORAGE_PATH"); filePath != "" {
 		// sets err func (a *app) setup()
 		if err = a.fileConfig.FilePath.Set(filePath); err != nil {
 			return err
 		}
+		a.fileConfig.FilePath.Source = config.SourceEnv
 	}
 	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
 		if err = a.httpConfig.Secured.Set(secured); err != nil {
 			return err
 		}
-		a.httpConfig.Secured.Source = "ENV"
+		a.httpConfig.Secured.Source = config.SourceEnv
 	}
 	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
 		if err = a.httpConfig.Address.Set(serverAddress); err != nil {
 			return err
 		}
-		a.httpConfig.Address.Source = "ENV"
+		a.httpConfig.Address.Source = config.SourceEnv
 	}
 
 	if auditFile := os.Getenv("AUDIT_FILE"); auditFile != "" {
 		if err = a.httpConfig.AuditFile.Set(auditFile); err != nil {
 			return err
 		}
-		a.httpConfig.AuditFile.Source = "ENV"
+		a.httpConfig.AuditFile.Source = config.SourceEnv
 	}
 
 	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
 		if err = a.httpConfig.AuditFile.Set(auditURL); err != nil {
 			return err
 		}
-		a.httpConfig.AuditURL.Source = "ENV"
+		a.httpConfig.AuditURL.Source = config.SourceEnv
 	}
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
 		if err = a.minifierConfig.BaseURL.Set(baseURL); err != nil {
 			return err
 		}
-		a.minifierConfig.BaseURL.Source = "ENV"
+		a.minifierConfig.BaseURL.Source = config.SourceEnv
 	}
 
 	// set flags

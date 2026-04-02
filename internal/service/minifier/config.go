@@ -17,6 +17,7 @@ func NewConfig() *Config {
 			Value:       new(baseURL),
 			Description: fmt.Sprintf("Default: `%s`. Set the base URL for minified URLs", defaultBaseURL),
 			Default:     defaultBaseURL,
+			Source:      config.SourceDefault,
 		},
 		MaxLen: 8,
 	}

@@ -17,36 +17,49 @@ var errParsingAddress = errors.New("error parsing address")
 
 // NewConfig returns a default HTTP server [Config].
 func NewConfig() *Config {
-	return &Config{
+	cfg := Config{
 		Address: config.Option[*address]{
 			Name:        "a",
 			Value:       new(address),
 			Default:     "localhost:8080",
 			Description: "Sets the network address and the port for the minifier",
-			Source:      "CONFIG_FILE",
 		},
 		AuditFile: config.Option[*auditFile]{
 			Name:        "audit-file",
 			Value:       new(auditFile),
 			Description: "Sets the file to write audit logs to",
-			Source:      "CONFIG_FILE",
 		},
 		AuditURL: config.Option[*auditURL]{
 			Name:        "audit-url",
 			Value:       new(auditURL),
 			Description: "Sets the URL to write audit logs to",
-			Source:      "CONFIG_FILE",
 		},
 		Secured: config.Option[*secured]{
 			Name:        "s",
 			Value:       new(secured),
 			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
-			Source:      "CONFIG_FILE",
 		},
 		SecretKey: config.Option[*secret]{
 			Value: new(secret),
 		},
 	}
+
+	cfg.Address.Set(cfg.Address.Default)
+	cfg.Address.Source = config.SourceDefault
+
+	cfg.SecretKey.Set(cfg.SecretKey.Default)
+	cfg.SecretKey.Source = config.SourceDefault
+
+	cfg.Secured.Set(cfg.Secured.Default)
+	cfg.Secured.Source = config.SourceDefault
+
+	cfg.AuditFile.Set(cfg.AuditFile.Default)
+	cfg.AuditFile.Source = config.SourceDefault
+
+	cfg.AuditURL.Set(cfg.AuditURL.Default)
+	cfg.AuditURL.Source = config.SourceDefault
+
+	return &cfg
 }
 
 // Config contains fields and [flag.Value]s to set up the [Server]

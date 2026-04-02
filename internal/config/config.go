@@ -10,8 +10,17 @@ type Option[T flag.Value] struct {
 	Value       T
 	Description string
 	Default     string
-	Source      string
+	Source
 }
+
+type Source int
+
+const (
+	SourceDefault Source = iota
+	SourceFile
+	SourceEnv
+	SourceFlag
+)
 
 func (receiver Option[T]) Set(s string) error {
 	return receiver.Value.Set(s)
@@ -26,8 +35,8 @@ func NewPath() Option[*Path] {
 		Name:        "c",
 		Value:       new(Path),
 		Description: "The path to the config file which is applied first and then gets overridden by flags or env vars",
-		Default:     ".cfg.json",
-		Source:      "DEFAULT",
+		Default:     "",
+		Source:      SourceDefault,
 	}
 }
 

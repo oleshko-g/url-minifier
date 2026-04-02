@@ -18,7 +18,7 @@ func NewConfig() *Config {
 			Value:       new(path),
 			Default:     defaultFilepath,
 			Description: fmt.Sprintf("Default: `%s`. Set the file path for the file storage", defaultFilepath),
-			Source:      "CONFIG_FILE",
+			Source:      config.SourceDefault,
 		},
 	}
 }
