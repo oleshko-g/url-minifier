@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/config"
@@ -144,8 +145,8 @@ func (a *app) setup() (err error) {
 		if a.configFile.FileStoragePath != "" && a.fileConfig.FilePath.Source == config.SourceDefault {
 			a.fileConfig.FilePath.Set(a.configFile.FileStoragePath)
 		}
-		if a.configFile.EnableHTTPS != "" && a.httpConfig.Secured.Source == config.SourceDefault {
-			a.httpConfig.Secured.Set(a.configFile.EnableHTTPS)
+		if a.configFile.EnableHTTPS && a.httpConfig.Secured.Source == config.SourceDefault {
+			a.httpConfig.Secured.Set(strconv.FormatBool(a.configFile.EnableHTTPS))
 		}
 		if a.configFile.ServerAddress != "" && a.httpConfig.Address.Source == config.SourceDefault {
 			a.httpConfig.Address.Set(a.configFile.ServerAddress)
