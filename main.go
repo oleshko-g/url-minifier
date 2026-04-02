@@ -1,6 +1,7 @@
 package main //revive:disable-line
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -117,7 +118,41 @@ func (a *app) setup() (err error) {
 	}
 
 	// set flags
-	flag.Var(a.configFilePath, a.configFilePath.Name, a.configFilePath.Description)
+	flag.Func(a.configFilePath.Name, a.configFilePath.Description, func(s string) error {
+		if err := a.configFilePath.Set(s); err != nil {
+			return err
+		}
+
+		cfgFile, err := os.Open(s)
+		if err != nil {
+			return err
+		}
+
+		d := json.NewDecoder(cfgFile)
+		if err := d.Decode(&a.configFile); err != nil {
+			return err
+		}
+		fmt.Printf("%v\n", a.configFile)
+
+		// override only the defaults
+		if a.configFile.BaseURL != "" && a.minifierConfig.BaseURL.Source == config.SourceDefault {
+			a.minifierConfig.BaseURL.Set(a.configFile.BaseURL)
+		}
+		if a.configFile.DatabaseDSN != "" && a.sqlConfig.DSN.Source == config.SourceDefault {
+			a.sqlConfig.DSN.Set(a.configFile.DatabaseDSN)
+		}
+		if a.configFile.FileStoragePath != "" && a.fileConfig.FilePath.Source == config.SourceDefault {
+			a.fileConfig.FilePath.Set(a.configFile.FileStoragePath)
+		}
+		if a.configFile.EnableHTTPS != "" && a.httpConfig.Secured.Source == config.SourceDefault {
+			a.httpConfig.Secured.Set(a.configFile.EnableHTTPS)
+		}
+		if a.configFile.ServerAddress != "" && a.httpConfig.Address.Source == config.SourceDefault {
+			a.httpConfig.Address.Set(a.configFile.ServerAddress)
+		}
+
+		return nil
+	})
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
 	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)

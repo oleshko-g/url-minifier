@@ -53,7 +53,7 @@ func (p Path) Set(s string) error {
 
 type File struct {
 	ServerAddress   string `json:"server_address" default:"localhost:8080"` // SERVER_ADDRESS or flag -a
-	BaseURL         string `json:"base_url" default:"http://localhost"`     // BASE_URL or flag -b
+	BaseURL         string `json:"base_url"`     // BASE_URL or flag -b
 	FileStoragePath string `json:"file_storage_path" default:""`            // FILE_STORAGE_PATH flag -f
 	DatabaseDSN     string `json:"database_dsn" default:""`                 // DATABASE_DSN or flag -d
 	EnableHTTPS     string `json:"enable_https" default:""`                 // ENABLE_HTTPS or flag -s
