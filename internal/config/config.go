@@ -1,7 +1,9 @@
 // Package config provides a generic config [Option]
 package config
 
-import "flag"
+import (
+	"flag"
+)
 
 type Option[T flag.Value] struct {
 	Name        string
@@ -19,14 +21,25 @@ func (receiver Option[T]) String() string {
 	return receiver.Value.String()
 }
 
-func New() *File {
-	return &File{
-		ServerAddress:   "localhost:8080",
-		BaseURL:         "http://localhost",
-		FileStoragePath: "",
-		DatabaseDSN:     "",
-		EnableHTTPS:     "",
+func NewPath() Option[*Path] {
+	return Option[*Path]{
+		Name:        "c",
+		Value:       new(Path),
+		Description: "The path to the config file which is applied first and then gets overridden by flags or env vars",
+		Default:     ".cfg.json",
+		Source:      "DEFAULT",
 	}
+}
+
+type Path string
+
+func (p Path) String() string {
+	return string(p)
+}
+
+func (p Path) Set(s string) error {
+	p = Path(s)
+	return nil
 }
 
 type File struct {

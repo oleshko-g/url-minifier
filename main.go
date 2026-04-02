@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/oleshko-g/url-minifier/internal/config"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/db"
@@ -28,6 +29,8 @@ func main() {
 }
 
 type app struct {
+	configFilePath config.Option[*config.Path]
+	configFile     *config.File
 	sqlConfig      db.Config
 	fileConfig     *file.Config
 	minifierConfig *minifier.Config
@@ -39,6 +42,7 @@ type app struct {
 
 func (a *app) setup() (err error) {
 	// Set the default config values
+	a.configFilePath = config.NewPath()
 	a.httpConfig = http.NewConfig()
 	a.sqlConfig = db.NewConfig()
 	a.fileConfig = file.NewConfig()
@@ -105,6 +109,7 @@ func (a *app) setup() (err error) {
 	}
 
 	// set flags
+	flag.Var(a.configFilePath, a.configFilePath.Name, a.configFilePath.Description)
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
 	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
