@@ -1,11 +1,13 @@
 package main //revive:disable-line
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -27,7 +29,21 @@ func main() {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
-	slog.Error(a.Server.ListenAndServe().Error())
+
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+
+	go func() {
+		cancel(a.Server.ListenAndServe())
+		<-ctx.Done()
+		slog.Info("shutdown the HTTP server gracefully", "cause", ctx.Err())
+	}()
+
+	shutdownSignal := make(chan os.Signal, 1)
+	signal.Notify(shutdownSignal, os.Interrupt, os.Kill)
+	sig := <-shutdownSignal
+	slog.Info("received an os.Signal. Shutting down gracefully...", "signal", sig.String())
+	cancel(a.Server.Shutdown(ctx))
 }
 
 type app struct {

@@ -28,6 +28,11 @@ type Server struct {
 	auditSubjects []chan auditEvent
 }
 
+// Shutdown shuts down the underlying HTTP server gracefully
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
+}
+
 // Service is the expected URL minifier service
 //
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
