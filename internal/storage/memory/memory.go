@@ -14,9 +14,9 @@ import (
 )
 
 // NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
-func NewStrRecords() storage.StoragePinger { // revive:disable-line:unexported-return provides the interface to the caller
+func NewStrRecords() storage.PingerCloser { // revive:disable-line:unexported-return provides the interface to the caller
 	uks := make(userKeys)
-	records := storage.NewStoragePingerNoOp(
+	records := storage.NewNoOpPingerClose(
 		&strRecords{
 			mux:      sync.RWMutex{},
 			userKeys: uks,

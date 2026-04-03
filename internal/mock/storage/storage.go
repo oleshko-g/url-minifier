@@ -5,8 +5,9 @@ package mockStorage
 
 import (
 	"context"
-	"github.com/oleshko-g/url-minifier/internal/storage"
 	"sync"
+
+	"github.com/oleshko-g/url-minifier/internal/storage"
 )
 
 // Ensure, that StoragerMock does implement storage.Storager.

@@ -13,12 +13,12 @@ import (
 
 // Service is the implementation of [http.Service]
 type Service struct {
-	storage storage.StoragePinger
+	storage storage.PingerCloser
 	*Config
 }
 
 // New configures a URL minifier service with the passed [Storager] and [Config]
-func New(s storage.StoragePinger, cp *Config) *Service {
+func New(s storage.PingerCloser, cp *Config) *Service {
 	return &Service{
 		storage: s,
 		Config:  cp,
@@ -28,6 +28,11 @@ func New(s storage.StoragePinger, cp *Config) *Service {
 // Ping check if the storage is up
 func (s *Service) Ping() error {
 	return s.storage.Ping()
+}
+
+// Close frees resources used by the [Service]
+func (s *Service) Close() error {
+	return s.storage.Close()
 }
 
 // MinifyURL takes any string, encodes it and returns the minified URL or an error. If the original URL is minified already MinifyURL returns both non empty minifiedURL and [ErrMinifiedAlready] error

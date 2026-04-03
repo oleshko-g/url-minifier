@@ -33,6 +33,15 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
+// Close closes the underlying [Service] and all the audit subjects
+func (s *Server) Close() error {
+	for _, ch := range s.auditSubjects {
+		close(ch)
+	}
+
+	return s.Service.Close()
+}
+
 // Service is the expected URL minifier service
 //
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
@@ -47,6 +56,7 @@ type Service interface {
 	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
 	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
+	io.Closer
 }
 
 type logger interface {

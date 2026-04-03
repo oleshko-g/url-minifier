@@ -1,7 +1,10 @@
 // Package storage is the package intended to be imported by minifier package and every storage implementation
 package storage
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 // Storager is the expected implementation of storage for the URL minifier
 //
@@ -21,10 +24,11 @@ type Pinger interface {
 	Ping() error
 }
 
-// StoragePinger is the expected implementation of storage with a [Pinger] for the URL minifier
-type StoragePinger interface {
+// PingerCloser is the expected implementation of storage with a [Pinger] for the URL minifier
+type PingerCloser interface {
 	Storager
 	Pinger
+	io.Closer
 }
 
 // PingerNoOp is a wraper struct to implement a noop [Pinger]
@@ -32,13 +36,17 @@ type PingerNoOp struct {
 	Storager
 }
 
-// NewStoragePingerNoOp wraps a [Storager] and return a [StoragePinger]
-func NewStoragePingerNoOp(storager Storager) StoragePinger {
+// NewNoOpPingerClose wraps a [Storager] and return a [PingerCloser]
+func NewNoOpPingerClose(storager Storager) PingerCloser {
 	return &PingerNoOp{Storager: storager}
 }
 
 // Ping is no-op for [Ping]
 func (p *PingerNoOp) Ping() error {
+	return nil
+}
+
+func (p *PingerNoOp) Close() error {
 	return nil
 }
 

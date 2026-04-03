@@ -46,11 +46,16 @@ type Storage struct {
 	db.Config
 }
 
-var _ storage.StoragePinger = (*Storage)(nil)
+var _ storage.PingerCloser = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {
 	return s.db.Ping()
+}
+
+// Close closes the Underlying SQL DB
+func (s *Storage) Close() error {
+	return s.db.Close()
 }
 
 // Save inserts value under key into the underlying db

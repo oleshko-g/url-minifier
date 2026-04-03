@@ -36,14 +36,20 @@ func main() {
 
 	go func() {
 		cancel(a.Server.ListenAndServe())
+		defer slog.Info(fmt.Sprintf("cause: %s", ctx.Err()))
 		<-ctx.Done()
-		slog.Info("shutdown the HTTP server gracefully", "cause", ctx.Err())
+		err := a.Server.Close()
+		if err != nil {
+			slog.Error("failed a graceful shutdown", "error", err.Error())
+			return
+		}
+		slog.Info("shutdown the HTTP server gracefully")
 	}()
 
 	shutdownSignal := make(chan os.Signal, 1)
 	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-shutdownSignal
-	slog.Info("received an os.Signal. Shutting down gracefully...", "signal", sig.String())
+	slog.Info(fmt.Sprintf("received the [%s] os.Signal. Shutting down gracefully...", sig.String()))
 	cancel(a.Server.Shutdown(ctx))
 }
 
@@ -54,7 +60,7 @@ type app struct {
 	fileConfig     *file.Config
 	minifierConfig *minifier.Config
 	httpConfig     *http.Config
-	storage.StoragePinger
+	storage.PingerCloser
 	*minifier.Service
 	*http.Server
 }
@@ -182,13 +188,13 @@ func (a *app) setup() (err error) {
 	flag.Parse()
 
 	if a.sqlConfig.DSN.String() != "" {
-		a.StoragePinger, err = sql.New(a.sqlConfig)
+		a.PingerCloser, err = sql.New(a.sqlConfig)
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.FilePath.String() != "" {
-		a.StoragePinger, err = file.New(a.fileConfig)
+		a.PingerCloser, err = file.New(a.fileConfig)
 		slog.Info("The storage is set to file.")
 	} else {
-		a.StoragePinger = memory.NewStrRecords()
+		a.PingerCloser = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	}
 
@@ -196,7 +202,7 @@ func (a *app) setup() (err error) {
 		return err
 	}
 
-	a.Service = minifier.New(a.StoragePinger, a.minifierConfig)
+	a.Service = minifier.New(a.PingerCloser, a.minifierConfig)
 	a.Server = http.NewServer(a.Service, a.httpConfig)
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL.String()))
