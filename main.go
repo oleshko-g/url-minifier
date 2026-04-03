@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"syscall"
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/config"
@@ -40,7 +41,7 @@ func main() {
 	}()
 
 	shutdownSignal := make(chan os.Signal, 1)
-	signal.Notify(shutdownSignal, os.Interrupt, os.Kill)
+	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-shutdownSignal
 	slog.Info("received an os.Signal. Shutting down gracefully...", "signal", sig.String())
 	cancel(a.Server.Shutdown(ctx))
