@@ -46,8 +46,8 @@ func (p Path) String() string {
 	return string(p)
 }
 
-func (p Path) Set(s string) error {
-	p = Path(s)
+func (p *Path) Set(s string) error {
+	*p = Path(s)
 	return nil
 }
 
