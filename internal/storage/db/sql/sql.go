@@ -46,7 +46,7 @@ type Storage struct {
 	db.Config
 }
 
-var _ storage.PingerCloser = (*Storage)(nil)
+var _ storage.PingerCloserCounter = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {
@@ -314,4 +314,60 @@ func connectDB(driverName string, dsn string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// CountUsers returns the number of users in the [Storage] database.
+func (s *Storage) CountUsers(ctx context.Context) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if _, ok := ctx.Deadline(); !ok {
+		ctxWithDeadline, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		defer cancel()
+
+		ctx = ctxWithDeadline
+	}
+
+	row := s.db.QueryRowContext(ctx, query.SelectCountUsers)
+	err := row.Err()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// CountUserStrings returns the number of user strings in the [Storage] database.
+func (s *Storage) CountUserStrings(ctx context.Context) (int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if _, ok := ctx.Deadline(); !ok {
+		ctxWithDeadline, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		defer cancel()
+
+		ctx = ctxWithDeadline
+	}
+
+	row := s.db.QueryRowContext(ctx, query.SelectCountUserStrings)
+	err := row.Err()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
