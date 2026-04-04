@@ -69,6 +69,7 @@ type Config struct {
 	Secured       config.Option[*secured]
 	AuditFile     config.Option[*auditFile]
 	AuditURL      config.Option[*auditURL]
+	TrustedSubnet config.Option[*trustedIPsubnet]
 	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
 	canDecompress map[coding]struct{}
 }
