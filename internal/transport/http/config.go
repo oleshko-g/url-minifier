@@ -39,6 +39,13 @@ func NewConfig() *Config {
 			Value:       new(secured),
 			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
 		},
+		TrustedIPSubnet: config.Option[*subnet]{
+			Name:        "t",
+			EnVarName:   "TRUSTED_SUBNET",
+			Value:       new(subnet),
+			Default:     "127.0.0.1/8",
+			Description: "Sets the trusted subnet for the minifier HTTP server",
+		},
 		SecretKey: config.Option[*secret]{
 			Value: new(secret),
 		},
@@ -59,19 +66,22 @@ func NewConfig() *Config {
 	cfg.AuditURL.Set(cfg.AuditURL.Default)
 	cfg.AuditURL.Source = config.SourceDefault
 
+	cfg.TrustedIPSubnet.Set(cfg.TrustedIPSubnet.Default)
+	cfg.TrustedIPSubnet.Source = config.SourceFile
+
 	return &cfg
 }
 
 // Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
-	Address       config.Option[*address]
-	SecretKey     config.Option[*secret]
-	Secured       config.Option[*secured]
-	AuditFile     config.Option[*auditFile]
-	AuditURL      config.Option[*auditURL]
-	TrustedSubnet config.Option[*trustedIPsubnet]
-	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
-	canDecompress map[coding]struct{}
+	TrustedIPSubnet config.Option[*subnet]
+	Address         config.Option[*address]
+	SecretKey       config.Option[*secret]
+	Secured         config.Option[*secured]
+	AuditFile       config.Option[*auditFile]
+	AuditURL        config.Option[*auditURL]
+	canCompress     codings // MUST contain at least one element. [codingIdentity] MUST be the last element
+	canDecompress   map[coding]struct{}
 }
 
 type codings []coding

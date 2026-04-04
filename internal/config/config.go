@@ -7,6 +7,7 @@ import (
 
 type Option[T flag.Value] struct {
 	Name        string
+	EnVarName   string
 	Value       T
 	Description string
 	Default     string
@@ -57,4 +58,5 @@ type File struct {
 	FileStoragePath string `json:"file_storage_path" default:""`            // FILE_STORAGE_PATH flag -f
 	DatabaseDSN     string `json:"database_dsn" default:""`                 // DATABASE_DSN or flag -d
 	EnableHTTPS     bool   `json:"enable_https" default:""`                 // ENABLE_HTTPS or flag -s
+	TrustedIPSubnet string `json:"trusted_ip_subnet" default:""`            // TRUSTED_SUBNET or flag -t
 }

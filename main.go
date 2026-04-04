@@ -108,6 +108,12 @@ func (a *app) setup() (err error) {
 		}
 		a.fileConfig.FilePath.Source = config.SourceEnv
 	}
+	if trustedSubnet := os.Getenv(a.httpConfig.TrustedIPSubnet.EnVarName); trustedSubnet != "" {
+		if err = a.httpConfig.TrustedIPSubnet.Set(trustedSubnet); err != nil {
+			return err
+		}
+		a.httpConfig.TrustedIPSubnet.Source = config.SourceEnv
+	}
 	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
 		if err = a.httpConfig.Secured.Set(secured); err != nil {
 			return err
@@ -175,11 +181,17 @@ func (a *app) setup() (err error) {
 			a.httpConfig.Address.Set(a.configFile.ServerAddress)
 		}
 
+		if a.configFile.TrustedIPSubnet != "" && a.httpConfig.TrustedIPSubnet.Source == config.SourceDefault {
+			a.httpConfig.TrustedIPSubnet.Set(a.configFile.TrustedIPSubnet)
+			a.httpConfig.TrustedIPSubnet.Source = config.SourceFile
+		}
+
 		return nil
 	})
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
 	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
+	flag.Var(a.httpConfig.TrustedIPSubnet, a.httpConfig.TrustedIPSubnet.Name, a.httpConfig.TrustedIPSubnet.Description)
 	flag.Var(a.httpConfig.Address, a.httpConfig.Address.Name, a.httpConfig.Address.Description)
 	flag.Var(a.httpConfig.AuditFile, a.httpConfig.AuditFile.Name, a.httpConfig.AuditFile.Description)
 	flag.Var(a.httpConfig.AuditURL, a.httpConfig.AuditURL.Name, a.httpConfig.AuditURL.Description)

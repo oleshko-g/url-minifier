@@ -5,15 +5,15 @@ import (
 	"net/http"
 )
 
-// trustedIPsubnet represents a trusted IP subnet in CIDR notation.
-type trustedIPsubnet struct {
+// subnet represents a trusted IP subnet in CIDR notation.
+type subnet struct {
 	net.IP
 	*net.IPNet
 }
 
 // Set parses the given string as a CIDR notation IP subnet and sets it as the trusted subnet.
 // If the string is not a valid CIDR notation, it returns an error.
-func (t *trustedIPsubnet) Set(s string) error {
+func (t *subnet) Set(s string) error {
 
 	ip, network, err := net.ParseCIDR(s)
 	if err != nil {
@@ -28,7 +28,7 @@ func (t *trustedIPsubnet) Set(s string) error {
 
 // String returns a string representation of the trusted IP subnet in CIDR notation.
 // If the subnet is not set, it returns an empty string.
-func (t *trustedIPsubnet) String() string {
+func (t *subnet) String() string {
 	if t.IPNet == nil {
 		return ""
 	}
@@ -41,7 +41,7 @@ func (s *Server) statsHandler() http.HandlerFunc {
 		// * TODO: check trusted subnet
 		defer r.Body.Close()
 
-		if s.Config.TrustedSubnet.Value == nil {
+		if s.Config.TrustedIPSubnet.Value == nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -59,7 +59,7 @@ func (s *Server) statsHandler() http.HandlerFunc {
 			return
 		}
 
-		if !s.Config.TrustedSubnet.Value.IPNet.Contains(ip) {
+		if !s.Config.TrustedIPSubnet.Value.IPNet.Contains(ip) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
