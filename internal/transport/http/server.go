@@ -100,28 +100,34 @@ func NewServer(s Service, cfg *Config) *Server {
 		}
 	}
 
+	srv.setHandler()
+
+	return srv
+}
+
+func (s *Server) setHandler() {
 	r := chi.NewRouter()
-	r.Use(srv.withLoggingMiddleware)
+	r.Use(s.withLoggingMiddleware)
 
-	r.Get("/ping", srv.pingHandler())
+	r.Get("/ping", s.pingHandler())
 	r.Route("/", func(r chi.Router) {
-		r.Use(srv.withEncodingMiddleware)
-		r.Use(srv.withAuthorization)
+		r.Use(s.withEncodingMiddleware)
+		r.Use(s.withAuthorization)
 
-		r.Get("/{id}", srv.newAuditedHandler("follow", srv.unMinifyURLHandler()))
-		r.Post("/", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLHandler())))
+		r.Get("/{id}", s.newAuditedHandler("follow", s.unMinifyURLHandler()))
+		r.Post("/", s.newAuditedHandler("shorten", s.authorized(s.minifyURLHandler())))
 		r.Route("/api", func(r chi.Router) {
-			r.Post("/shorten", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLJSONHandler())))
-			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
-			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
-			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
+			r.Post("/shorten", s.newAuditedHandler("shorten", s.authorized(s.minifyURLJSONHandler())))
+			r.Post("/shorten/batch", s.authorized(s.minifyURLsHandler()))
+			r.Get("/user/urls", s.authorized(s.userURLsHandler()))
+			r.Delete("/user/urls", s.authorized(s.deleteUserURLsHandler()))
+			r.Get("/internal/stats", s.statsHandler())
 		})
 	})
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
-	srv.server.Handler = r
 
-	return srv
+	s.server.Handler = r
 }
 
 // ListenAndServe starts underlying [http.Server]
