@@ -33,10 +33,10 @@ type testApp struct {
 func newTestApp() *testApp {
 	var ta testApp
 
-	ta.PingerCloser = memory.NewStrRecords()
+	ta.Storage.Storager = memory.NewStrRecords()
 	ta.minifierConfig = minifier.NewConfig()
 	ta.minifierConfig.BaseURL.Set(ta.minifierConfig.BaseURL.Default)
-	ta.Service = minifier.New(ta.PingerCloser, ta.minifierConfig)
+	ta.Service = minifier.New(ta.Storage, ta.minifierConfig)
 	ta.Config = NewConfig()
 	ta.Config.Address.Set(ta.Config.Address.Default)
 	ta.Server = NewServer(ta.Service, ta.Config)
@@ -123,7 +123,7 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta.PingerCloser.Save(tt.minifiedID, tt.originalURL)
+			ta.Storage.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)

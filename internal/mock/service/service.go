@@ -5,10 +5,9 @@ package minifier
 
 import (
 	"context"
-	"sync"
-
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
+	"sync"
 )
 
 // Ensure, that ServiceMock does implement http.Service.
@@ -23,6 +22,12 @@ var _ http.Service = &ServiceMock{}
 //		mockedService := &ServiceMock{
 //			CloseFunc: func() error {
 //				panic("mock out the Close method")
+//			},
+//			CountUserStringsFunc: func(contextMoqParam context.Context) (int, error) {
+//				panic("mock out the CountUserStrings method")
+//			},
+//			CountUsersFunc: func(contextMoqParam context.Context) (int, error) {
+//				panic("mock out the CountUsers method")
 //			},
 //			DeleteUserURLsFunc: func(ctx context.Context, userID string, minifiedIDs []string) error {
 //				panic("mock out the DeleteUserURLs method")
@@ -55,6 +60,12 @@ type ServiceMock struct {
 	// CloseFunc mocks the Close method.
 	CloseFunc func() error
 
+	// CountUserStringsFunc mocks the CountUserStrings method.
+	CountUserStringsFunc func(contextMoqParam context.Context) (int, error)
+
+	// CountUsersFunc mocks the CountUsers method.
+	CountUsersFunc func(contextMoqParam context.Context) (int, error)
+
 	// DeleteUserURLsFunc mocks the DeleteUserURLs method.
 	DeleteUserURLsFunc func(ctx context.Context, userID string, minifiedIDs []string) error
 
@@ -80,6 +91,16 @@ type ServiceMock struct {
 	calls struct {
 		// Close holds details about calls to the Close method.
 		Close []struct {
+		}
+		// CountUserStrings holds details about calls to the CountUserStrings method.
+		CountUserStrings []struct {
+			// ContextMoqParam is the contextMoqParam argument value.
+			ContextMoqParam context.Context
+		}
+		// CountUsers holds details about calls to the CountUsers method.
+		CountUsers []struct {
+			// ContextMoqParam is the contextMoqParam argument value.
+			ContextMoqParam context.Context
 		}
 		// DeleteUserURLs holds details about calls to the DeleteUserURLs method.
 		DeleteUserURLs []struct {
@@ -131,14 +152,16 @@ type ServiceMock struct {
 			UserID string
 		}
 	}
-	lockClose           sync.RWMutex
-	lockDeleteUserURLs  sync.RWMutex
-	lockMinifyURL       sync.RWMutex
-	lockMinifyURLs      sync.RWMutex
-	lockPing            sync.RWMutex
-	lockUnMinifyURL     sync.RWMutex
-	lockUnMinifyUserURL sync.RWMutex
-	lockUserURLs        sync.RWMutex
+	lockClose            sync.RWMutex
+	lockCountUserStrings sync.RWMutex
+	lockCountUsers       sync.RWMutex
+	lockDeleteUserURLs   sync.RWMutex
+	lockMinifyURL        sync.RWMutex
+	lockMinifyURLs       sync.RWMutex
+	lockPing             sync.RWMutex
+	lockUnMinifyURL      sync.RWMutex
+	lockUnMinifyUserURL  sync.RWMutex
+	lockUserURLs         sync.RWMutex
 }
 
 // Close calls CloseFunc.
@@ -165,6 +188,70 @@ func (mock *ServiceMock) CloseCalls() []struct {
 	mock.lockClose.RLock()
 	calls = mock.calls.Close
 	mock.lockClose.RUnlock()
+	return calls
+}
+
+// CountUserStrings calls CountUserStringsFunc.
+func (mock *ServiceMock) CountUserStrings(contextMoqParam context.Context) (int, error) {
+	if mock.CountUserStringsFunc == nil {
+		panic("ServiceMock.CountUserStringsFunc: method is nil but Service.CountUserStrings was just called")
+	}
+	callInfo := struct {
+		ContextMoqParam context.Context
+	}{
+		ContextMoqParam: contextMoqParam,
+	}
+	mock.lockCountUserStrings.Lock()
+	mock.calls.CountUserStrings = append(mock.calls.CountUserStrings, callInfo)
+	mock.lockCountUserStrings.Unlock()
+	return mock.CountUserStringsFunc(contextMoqParam)
+}
+
+// CountUserStringsCalls gets all the calls that were made to CountUserStrings.
+// Check the length with:
+//
+//	len(mockedService.CountUserStringsCalls())
+func (mock *ServiceMock) CountUserStringsCalls() []struct {
+	ContextMoqParam context.Context
+} {
+	var calls []struct {
+		ContextMoqParam context.Context
+	}
+	mock.lockCountUserStrings.RLock()
+	calls = mock.calls.CountUserStrings
+	mock.lockCountUserStrings.RUnlock()
+	return calls
+}
+
+// CountUsers calls CountUsersFunc.
+func (mock *ServiceMock) CountUsers(contextMoqParam context.Context) (int, error) {
+	if mock.CountUsersFunc == nil {
+		panic("ServiceMock.CountUsersFunc: method is nil but Service.CountUsers was just called")
+	}
+	callInfo := struct {
+		ContextMoqParam context.Context
+	}{
+		ContextMoqParam: contextMoqParam,
+	}
+	mock.lockCountUsers.Lock()
+	mock.calls.CountUsers = append(mock.calls.CountUsers, callInfo)
+	mock.lockCountUsers.Unlock()
+	return mock.CountUsersFunc(contextMoqParam)
+}
+
+// CountUsersCalls gets all the calls that were made to CountUsers.
+// Check the length with:
+//
+//	len(mockedService.CountUsersCalls())
+func (mock *ServiceMock) CountUsersCalls() []struct {
+	ContextMoqParam context.Context
+} {
+	var calls []struct {
+		ContextMoqParam context.Context
+	}
+	mock.lockCountUsers.RLock()
+	calls = mock.calls.CountUsers
+	mock.lockCountUsers.RUnlock()
 	return calls
 }
 

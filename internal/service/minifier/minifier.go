@@ -13,26 +13,26 @@ import (
 
 // Service is the implementation of [http.Service]
 type Service struct {
-	storage storage.PingerCloser
+	*storage.Storage
 	*Config
 }
 
 // New configures a URL minifier service with the passed [Storager] and [Config]
-func New(s storage.PingerCloser, cp *Config) *Service {
+func New(s *storage.Storage, cp *Config) *Service {
 	return &Service{
-		storage: s,
+		Storage: s,
 		Config:  cp,
 	}
 }
 
 // Ping check if the storage is up
 func (s *Service) Ping() error {
-	return s.storage.Ping()
+	return s.Storage.Ping()
 }
 
 // Close frees resources used by the [Service]
 func (s *Service) Close() error {
-	return s.storage.Close()
+	return s.Storage.Close()
 }
 
 // MinifyURL takes any string, encodes it and returns the minified URL or an error. If the original URL is minified already MinifyURL returns both non empty minifiedURL and [ErrMinifiedAlready] error
@@ -46,7 +46,7 @@ func (s *Service) MinifyURL(ctx context.Context, userID, originalURL string) (mi
 	minifiedID := encode([]byte(originalURL), s.MaxLen)
 	minifiedURL = s.newMinifiedURL(minifiedID)
 
-	err = s.storage.SaveUserString(ctx, storage.UserString{
+	err = s.Storage.SaveUserString(ctx, storage.UserString{
 		UserID: userID,
 		Key:    minifiedID,
 		Value:  originalURL,
@@ -69,7 +69,7 @@ func (s *Service) newMinifiedURL(minifiedID string) string {
 //
 // TODO: add tests
 func (s *Service) UnMinifyURL(id string) (url string, err error) {
-	return s.storage.Retrieve(id)
+	return s.Storage.Retrieve(id)
 }
 
 // TODO: research if truncation might lead to collisions
@@ -110,7 +110,7 @@ func (s *Service) MinifyURLs(ctx context.Context, userID string, originalURLs []
 
 // UserURLs takes userID and return a slice of [minifier.URL]'s or an error
 func (s *Service) UserURLs(ctx context.Context, userID string) ([]URL, error) {
-	uss, err := s.storage.RetrieveUserStrings(ctx, userID)
+	uss, err := s.Storage.RetrieveUserStrings(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs
 	var successCh = make(chan struct{}, len(minifiedIDs))
 	for _, mID := range minifiedIDs {
 		go func() {
-			err := s.storage.MarkDeletedUserString(ctx, userID, mID)
+			err := s.Storage.MarkDeletedUserString(ctx, userID, mID)
 			if err != nil {
 				cancel(err)
 				return
@@ -166,10 +166,20 @@ func (s *Service) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs
 
 // UnMinifyUserURL takes an id of a user string and returned its value and if it's deleted
 func (s *Service) UnMinifyUserURL(ctx context.Context, id string) (value string, isDeleted bool, err error) {
-	userString, err := s.storage.RetrieveUserString(ctx, id)
+	userString, err := s.Storage.RetrieveUserString(ctx, id)
 	if err != nil {
 		return "", false, err
 	}
 
 	return userString.Value, userString.Deleted, nil
+}
+
+// CountUserStrings returns the number of user strings for a given userID
+func (s *Service) CountUserStrings(ctx context.Context) (int, error) {
+	return s.Storage.CountUserStrings(ctx)
+}
+
+// CountUsers returns the number of users
+func (s *Service) CountUsers(ctx context.Context) (int, error) {
+	return s.Storage.CountUsers(ctx)
 }

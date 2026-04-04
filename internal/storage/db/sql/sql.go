@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -15,6 +16,13 @@ import (
 	query "github.com/oleshko-g/url-minifier/internal/storage/db/sql/queries"
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql/schema"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
+)
+
+var (
+	_ storage.Storager = (*Storage)(nil)
+	_ storage.Pinger   = (*Storage)(nil)
+	_ io.Closer        = (*Storage)(nil)
+	_ storage.Counter  = (*Storage)(nil)
 )
 
 // New configures and open a new connection to the db and returns a [Storage] or an error
@@ -45,8 +53,6 @@ type Storage struct {
 	db *sql.DB
 	db.Config
 }
-
-var _ storage.PingerCloserCounter = (*Storage)(nil)
 
 // Ping exposes the Ping() method of the underlying [sql.DB]
 func (s *Storage) Ping() error {

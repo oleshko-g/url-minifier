@@ -60,7 +60,7 @@ type app struct {
 	fileConfig     *file.Config
 	minifierConfig *minifier.Config
 	httpConfig     *http.Config
-	storage.PingerCloser
+	storage.Storage
 	*minifier.Service
 	*http.Server
 }
@@ -200,13 +200,25 @@ func (a *app) setup() (err error) {
 	flag.Parse()
 
 	if a.sqlConfig.DSN.String() != "" {
-		a.PingerCloser, err = sql.New(a.sqlConfig)
+		sqlStorage, err := sql.New(a.sqlConfig)
+		if err != nil {
+			return err
+		}
+		a.Storage.Storager = sqlStorage
+		a.Storage.Pinger = sqlStorage
+		a.Storage.Closer = sqlStorage
+		a.Storage.Counter = sqlStorage
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.FilePath.String() != "" {
-		a.PingerCloser, err = file.New(a.fileConfig)
+		fileStorage, err := file.New(a.fileConfig)
+		if err != nil {
+			return err
+		}
+		a.Storage.Storager = fileStorage
+		a.Storage.Closer = fileStorage
 		slog.Info("The storage is set to file.")
 	} else {
-		a.PingerCloser = memory.NewStrRecords()
+		a.Storage.Storager = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	}
 
@@ -214,7 +226,7 @@ func (a *app) setup() (err error) {
 		return err
 	}
 
-	a.Service = minifier.New(a.PingerCloser, a.minifierConfig)
+	a.Service = minifier.New(&a.Storage, a.minifierConfig)
 	a.Server = http.NewServer(a.Service, a.httpConfig)
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL.String()))

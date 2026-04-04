@@ -4,374 +4,102 @@
 package mockStorage
 
 import (
-	"context"
-	"sync"
-
 	"github.com/oleshko-g/url-minifier/internal/storage"
+	"sync"
 )
 
-// Ensure, that StoragerMock does implement storage.Storager.
+// Ensure, that PingerCloserMock does implement storage.PingerCloser.
 // If this is not the case, regenerate this file with moq.
-var _ storage.Storager = &StoragerMock{}
+var _ storage.PingerCloser = &PingerCloserMock{}
 
-// StoragerMock is a mock implementation of storage.Storager.
+// PingerCloserMock is a mock implementation of storage.PingerCloser.
 //
-//	func TestSomethingThatUsesStorager(t *testing.T) {
+//	func TestSomethingThatUsesPingerCloser(t *testing.T) {
 //
-//		// make and configure a mocked storage.Storager
-//		mockedStorager := &StoragerMock{
-//			MarkDeletedUserStringFunc: func(ctx context.Context, userID string, key string) error {
-//				panic("mock out the MarkDeletedUserString method")
+//		// make and configure a mocked storage.PingerCloser
+//		mockedPingerCloser := &PingerCloserMock{
+//			CloseFunc: func() error {
+//				panic("mock out the Close method")
 //			},
-//			RetrieveFunc: func(key string) (string, error) {
-//				panic("mock out the Retrieve method")
-//			},
-//			RetrieveUserStringFunc: func(ctx context.Context, key string) (storage.UserString, error) {
-//				panic("mock out the RetrieveUserString method")
-//			},
-//			RetrieveUserStringsFunc: func(ctx context.Context, userID string) ([]storage.UserString, error) {
-//				panic("mock out the RetrieveUserStrings method")
-//			},
-//			SaveFunc: func(key string, value string) error {
-//				panic("mock out the Save method")
-//			},
-//			SaveListFunc: func(values []map[string]string) error {
-//				panic("mock out the SaveList method")
-//			},
-//			SaveUserStringFunc: func(ctx context.Context, us storage.UserString) error {
-//				panic("mock out the SaveUserString method")
+//			PingFunc: func() error {
+//				panic("mock out the Ping method")
 //			},
 //		}
 //
-//		// use mockedStorager in code that requires storage.Storager
+//		// use mockedPingerCloser in code that requires storage.PingerCloser
 //		// and then make assertions.
 //
 //	}
-type StoragerMock struct {
-	// MarkDeletedUserStringFunc mocks the MarkDeletedUserString method.
-	MarkDeletedUserStringFunc func(ctx context.Context, userID string, key string) error
+type PingerCloserMock struct {
+	// CloseFunc mocks the Close method.
+	CloseFunc func() error
 
-	// RetrieveFunc mocks the Retrieve method.
-	RetrieveFunc func(key string) (string, error)
-
-	// RetrieveUserStringFunc mocks the RetrieveUserString method.
-	RetrieveUserStringFunc func(ctx context.Context, key string) (storage.UserString, error)
-
-	// RetrieveUserStringsFunc mocks the RetrieveUserStrings method.
-	RetrieveUserStringsFunc func(ctx context.Context, userID string) ([]storage.UserString, error)
-
-	// SaveFunc mocks the Save method.
-	SaveFunc func(key string, value string) error
-
-	// SaveListFunc mocks the SaveList method.
-	SaveListFunc func(values []map[string]string) error
-
-	// SaveUserStringFunc mocks the SaveUserString method.
-	SaveUserStringFunc func(ctx context.Context, us storage.UserString) error
+	// PingFunc mocks the Ping method.
+	PingFunc func() error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// MarkDeletedUserString holds details about calls to the MarkDeletedUserString method.
-		MarkDeletedUserString []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// UserID is the userID argument value.
-			UserID string
-			// Key is the key argument value.
-			Key string
+		// Close holds details about calls to the Close method.
+		Close []struct {
 		}
-		// Retrieve holds details about calls to the Retrieve method.
-		Retrieve []struct {
-			// Key is the key argument value.
-			Key string
-		}
-		// RetrieveUserString holds details about calls to the RetrieveUserString method.
-		RetrieveUserString []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Key is the key argument value.
-			Key string
-		}
-		// RetrieveUserStrings holds details about calls to the RetrieveUserStrings method.
-		RetrieveUserStrings []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// UserID is the userID argument value.
-			UserID string
-		}
-		// Save holds details about calls to the Save method.
-		Save []struct {
-			// Key is the key argument value.
-			Key string
-			// Value is the value argument value.
-			Value string
-		}
-		// SaveList holds details about calls to the SaveList method.
-		SaveList []struct {
-			// Values is the values argument value.
-			Values []map[string]string
-		}
-		// SaveUserString holds details about calls to the SaveUserString method.
-		SaveUserString []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Us is the us argument value.
-			Us storage.UserString
+		// Ping holds details about calls to the Ping method.
+		Ping []struct {
 		}
 	}
-	lockMarkDeletedUserString sync.RWMutex
-	lockRetrieve              sync.RWMutex
-	lockRetrieveUserString    sync.RWMutex
-	lockRetrieveUserStrings   sync.RWMutex
-	lockSave                  sync.RWMutex
-	lockSaveList              sync.RWMutex
-	lockSaveUserString        sync.RWMutex
+	lockClose sync.RWMutex
+	lockPing  sync.RWMutex
 }
 
-// MarkDeletedUserString calls MarkDeletedUserStringFunc.
-func (mock *StoragerMock) MarkDeletedUserString(ctx context.Context, userID string, key string) error {
-	if mock.MarkDeletedUserStringFunc == nil {
-		panic("StoragerMock.MarkDeletedUserStringFunc: method is nil but Storager.MarkDeletedUserString was just called")
+// Close calls CloseFunc.
+func (mock *PingerCloserMock) Close() error {
+	if mock.CloseFunc == nil {
+		panic("PingerCloserMock.CloseFunc: method is nil but PingerCloser.Close was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		UserID string
-		Key    string
-	}{
-		Ctx:    ctx,
-		UserID: userID,
-		Key:    key,
-	}
-	mock.lockMarkDeletedUserString.Lock()
-	mock.calls.MarkDeletedUserString = append(mock.calls.MarkDeletedUserString, callInfo)
-	mock.lockMarkDeletedUserString.Unlock()
-	return mock.MarkDeletedUserStringFunc(ctx, userID, key)
+	}{}
+	mock.lockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	mock.lockClose.Unlock()
+	return mock.CloseFunc()
 }
 
-// MarkDeletedUserStringCalls gets all the calls that were made to MarkDeletedUserString.
+// CloseCalls gets all the calls that were made to Close.
 // Check the length with:
 //
-//	len(mockedStorager.MarkDeletedUserStringCalls())
-func (mock *StoragerMock) MarkDeletedUserStringCalls() []struct {
-	Ctx    context.Context
-	UserID string
-	Key    string
+//	len(mockedPingerCloser.CloseCalls())
+func (mock *PingerCloserMock) CloseCalls() []struct {
 } {
 	var calls []struct {
-		Ctx    context.Context
-		UserID string
-		Key    string
 	}
-	mock.lockMarkDeletedUserString.RLock()
-	calls = mock.calls.MarkDeletedUserString
-	mock.lockMarkDeletedUserString.RUnlock()
+	mock.lockClose.RLock()
+	calls = mock.calls.Close
+	mock.lockClose.RUnlock()
 	return calls
 }
 
-// Retrieve calls RetrieveFunc.
-func (mock *StoragerMock) Retrieve(key string) (string, error) {
-	if mock.RetrieveFunc == nil {
-		panic("StoragerMock.RetrieveFunc: method is nil but Storager.Retrieve was just called")
+// Ping calls PingFunc.
+func (mock *PingerCloserMock) Ping() error {
+	if mock.PingFunc == nil {
+		panic("PingerCloserMock.PingFunc: method is nil but PingerCloser.Ping was just called")
 	}
 	callInfo := struct {
-		Key string
-	}{
-		Key: key,
-	}
-	mock.lockRetrieve.Lock()
-	mock.calls.Retrieve = append(mock.calls.Retrieve, callInfo)
-	mock.lockRetrieve.Unlock()
-	return mock.RetrieveFunc(key)
+	}{}
+	mock.lockPing.Lock()
+	mock.calls.Ping = append(mock.calls.Ping, callInfo)
+	mock.lockPing.Unlock()
+	return mock.PingFunc()
 }
 
-// RetrieveCalls gets all the calls that were made to Retrieve.
+// PingCalls gets all the calls that were made to Ping.
 // Check the length with:
 //
-//	len(mockedStorager.RetrieveCalls())
-func (mock *StoragerMock) RetrieveCalls() []struct {
-	Key string
+//	len(mockedPingerCloser.PingCalls())
+func (mock *PingerCloserMock) PingCalls() []struct {
 } {
 	var calls []struct {
-		Key string
 	}
-	mock.lockRetrieve.RLock()
-	calls = mock.calls.Retrieve
-	mock.lockRetrieve.RUnlock()
-	return calls
-}
-
-// RetrieveUserString calls RetrieveUserStringFunc.
-func (mock *StoragerMock) RetrieveUserString(ctx context.Context, key string) (storage.UserString, error) {
-	if mock.RetrieveUserStringFunc == nil {
-		panic("StoragerMock.RetrieveUserStringFunc: method is nil but Storager.RetrieveUserString was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Key string
-	}{
-		Ctx: ctx,
-		Key: key,
-	}
-	mock.lockRetrieveUserString.Lock()
-	mock.calls.RetrieveUserString = append(mock.calls.RetrieveUserString, callInfo)
-	mock.lockRetrieveUserString.Unlock()
-	return mock.RetrieveUserStringFunc(ctx, key)
-}
-
-// RetrieveUserStringCalls gets all the calls that were made to RetrieveUserString.
-// Check the length with:
-//
-//	len(mockedStorager.RetrieveUserStringCalls())
-func (mock *StoragerMock) RetrieveUserStringCalls() []struct {
-	Ctx context.Context
-	Key string
-} {
-	var calls []struct {
-		Ctx context.Context
-		Key string
-	}
-	mock.lockRetrieveUserString.RLock()
-	calls = mock.calls.RetrieveUserString
-	mock.lockRetrieveUserString.RUnlock()
-	return calls
-}
-
-// RetrieveUserStrings calls RetrieveUserStringsFunc.
-func (mock *StoragerMock) RetrieveUserStrings(ctx context.Context, userID string) ([]storage.UserString, error) {
-	if mock.RetrieveUserStringsFunc == nil {
-		panic("StoragerMock.RetrieveUserStringsFunc: method is nil but Storager.RetrieveUserStrings was just called")
-	}
-	callInfo := struct {
-		Ctx    context.Context
-		UserID string
-	}{
-		Ctx:    ctx,
-		UserID: userID,
-	}
-	mock.lockRetrieveUserStrings.Lock()
-	mock.calls.RetrieveUserStrings = append(mock.calls.RetrieveUserStrings, callInfo)
-	mock.lockRetrieveUserStrings.Unlock()
-	return mock.RetrieveUserStringsFunc(ctx, userID)
-}
-
-// RetrieveUserStringsCalls gets all the calls that were made to RetrieveUserStrings.
-// Check the length with:
-//
-//	len(mockedStorager.RetrieveUserStringsCalls())
-func (mock *StoragerMock) RetrieveUserStringsCalls() []struct {
-	Ctx    context.Context
-	UserID string
-} {
-	var calls []struct {
-		Ctx    context.Context
-		UserID string
-	}
-	mock.lockRetrieveUserStrings.RLock()
-	calls = mock.calls.RetrieveUserStrings
-	mock.lockRetrieveUserStrings.RUnlock()
-	return calls
-}
-
-// Save calls SaveFunc.
-func (mock *StoragerMock) Save(key string, value string) error {
-	if mock.SaveFunc == nil {
-		panic("StoragerMock.SaveFunc: method is nil but Storager.Save was just called")
-	}
-	callInfo := struct {
-		Key   string
-		Value string
-	}{
-		Key:   key,
-		Value: value,
-	}
-	mock.lockSave.Lock()
-	mock.calls.Save = append(mock.calls.Save, callInfo)
-	mock.lockSave.Unlock()
-	return mock.SaveFunc(key, value)
-}
-
-// SaveCalls gets all the calls that were made to Save.
-// Check the length with:
-//
-//	len(mockedStorager.SaveCalls())
-func (mock *StoragerMock) SaveCalls() []struct {
-	Key   string
-	Value string
-} {
-	var calls []struct {
-		Key   string
-		Value string
-	}
-	mock.lockSave.RLock()
-	calls = mock.calls.Save
-	mock.lockSave.RUnlock()
-	return calls
-}
-
-// SaveList calls SaveListFunc.
-func (mock *StoragerMock) SaveList(values []map[string]string) error {
-	if mock.SaveListFunc == nil {
-		panic("StoragerMock.SaveListFunc: method is nil but Storager.SaveList was just called")
-	}
-	callInfo := struct {
-		Values []map[string]string
-	}{
-		Values: values,
-	}
-	mock.lockSaveList.Lock()
-	mock.calls.SaveList = append(mock.calls.SaveList, callInfo)
-	mock.lockSaveList.Unlock()
-	return mock.SaveListFunc(values)
-}
-
-// SaveListCalls gets all the calls that were made to SaveList.
-// Check the length with:
-//
-//	len(mockedStorager.SaveListCalls())
-func (mock *StoragerMock) SaveListCalls() []struct {
-	Values []map[string]string
-} {
-	var calls []struct {
-		Values []map[string]string
-	}
-	mock.lockSaveList.RLock()
-	calls = mock.calls.SaveList
-	mock.lockSaveList.RUnlock()
-	return calls
-}
-
-// SaveUserString calls SaveUserStringFunc.
-func (mock *StoragerMock) SaveUserString(ctx context.Context, us storage.UserString) error {
-	if mock.SaveUserStringFunc == nil {
-		panic("StoragerMock.SaveUserStringFunc: method is nil but Storager.SaveUserString was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		Us  storage.UserString
-	}{
-		Ctx: ctx,
-		Us:  us,
-	}
-	mock.lockSaveUserString.Lock()
-	mock.calls.SaveUserString = append(mock.calls.SaveUserString, callInfo)
-	mock.lockSaveUserString.Unlock()
-	return mock.SaveUserStringFunc(ctx, us)
-}
-
-// SaveUserStringCalls gets all the calls that were made to SaveUserString.
-// Check the length with:
-//
-//	len(mockedStorager.SaveUserStringCalls())
-func (mock *StoragerMock) SaveUserStringCalls() []struct {
-	Ctx context.Context
-	Us  storage.UserString
-} {
-	var calls []struct {
-		Ctx context.Context
-		Us  storage.UserString
-	}
-	mock.lockSaveUserString.RLock()
-	calls = mock.calls.SaveUserString
-	mock.lockSaveUserString.RUnlock()
+	mock.lockPing.RLock()
+	calls = mock.calls.Ping
+	mock.lockPing.RUnlock()
 	return calls
 }

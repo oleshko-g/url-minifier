@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/storage"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -47,7 +48,6 @@ func (s *Server) Close() error {
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
 type Service interface {
 	MinifyURL(ctx context.Context, userID string, url string) (minifiedURL string, err error)
-
 	MinifyURLs(ctx context.Context, userID string,
 		urls []map[string]string) (minifiedURLs []map[string]string, err error)
 	UnMinifyURL(id string) (url string, err error)
@@ -57,6 +57,7 @@ type Service interface {
 	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
 	io.Closer
+	storage.Counter
 }
 
 type logger interface {

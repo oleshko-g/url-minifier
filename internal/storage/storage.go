@@ -6,19 +6,22 @@ import (
 	"io"
 )
 
-//go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . PingerCloserCounter
-// PingerCloserCounter is the expected implementation of a [PingerCloser] with a [Counter] for the URL minifier
-type PingerCloserCounter interface {
-	PingerCloser
+// Storage is the expected implementation of a [PingerCloser] with a [Counter] for the URL minifier
+type Storage struct {
+	Storager
+	Pinger
+	io.Closer
 	Counter
 }
 
+//go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . Counter
 type Counter interface {
 	CountUserStrings(context.Context) (int, error)
 	CountUsers(context.Context) (int, error)
 }
 
 // Storager is the expected implementation of storage for the URL minifier
+//go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . Storager
 type Storager interface {
 	Save(key, value string) error
 	SaveList(values []map[string]string) error
@@ -30,13 +33,14 @@ type Storager interface {
 }
 
 // Pinger is the expected implementation of a pinger for the URL minifier
+//go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . Pinger
 type Pinger interface {
 	Ping() error
 }
 
 // PingerCloser is the expected implementation of storage with a [Pinger] for the URL minifier
+//go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . PingerCloser
 type PingerCloser interface {
-	Storager
 	Pinger
 	io.Closer
 }
