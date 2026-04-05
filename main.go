@@ -47,7 +47,7 @@ func main() {
 	}()
 
 	shutdownSignal := make(chan os.Signal, 1)
-	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	sig := <-shutdownSignal
 	slog.Info(fmt.Sprintf("received the [%s] os.Signal. Shutting down gracefully...", sig.String()))
 	cancel(a.Server.Shutdown(ctx))
@@ -129,7 +129,7 @@ func (a *app) setup() (err error) {
 	}
 
 	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
-		if err = a.httpConfig.AuditFile.Set(auditURL); err != nil {
+		if err = a.httpConfig.AuditURL.Set(auditURL); err != nil {
 			return err
 		}
 		a.httpConfig.AuditURL.Source = config.SourceEnv

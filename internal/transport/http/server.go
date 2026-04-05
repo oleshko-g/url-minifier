@@ -94,7 +94,7 @@ func NewServer(s Service, cfg *Config) *Server {
 		}
 	}
 
-	if srv.Config.AuditFile.Value != nil {
+	if srv.Config.AuditURL.Value != nil {
 		if cfg.AuditURL.Value.enabled {
 			srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
 		}
