@@ -15,6 +15,7 @@ func NewConfig() *Config {
 	return &Config{
 		FilePath: config.Option[*path]{
 			Name:        "f",
+			EnVarName:   "FILE_STORAGE_PATH",
 			Value:       new(path),
 			Default:     defaultFilepath,
 			Description: fmt.Sprintf("Default: `%s`. Set the file path for the file storage", defaultFilepath),

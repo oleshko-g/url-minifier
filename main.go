@@ -88,20 +88,20 @@ func (a *app) setup() (err error) {
 
 	// If an env var is present then it overrides the default value or the flag value
 	godotenv.Load(".env")
-	if cfgFilePath := os.Getenv("CONFIG"); cfgFilePath != "" {
+	if cfgFilePath := os.Getenv(a.configFilePath.EnVarName); cfgFilePath != "" {
 		if err = a.configFilePath.Set(cfgFilePath); err != nil {
 			return err
 		}
 		a.configFilePath.Source = config.SourceEnv
 	}
-	if dbConn := os.Getenv("DATABASE_DSN"); dbConn != "" {
+	if dbConn := os.Getenv(a.sqlConfig.DSN.EnVarName); dbConn != "" {
 		// sets err func (a *app) setup()
 		if err = a.sqlConfig.DSN.Set(dbConn); err != nil {
 			return err
 		}
 		a.sqlConfig.DSN.Source = config.SourceEnv
 	}
-	if filePath := os.Getenv("FILE_STORAGE_PATH"); filePath != "" {
+	if filePath := os.Getenv(a.fileConfig.FilePath.EnVarName); filePath != "" {
 		// sets err func (a *app) setup()
 		if err = a.fileConfig.FilePath.Set(filePath); err != nil {
 			return err
@@ -114,33 +114,33 @@ func (a *app) setup() (err error) {
 		}
 		a.httpConfig.TrustedIPSubnet.Source = config.SourceEnv
 	}
-	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
+	if secured := os.Getenv(a.httpConfig.Secured.EnVarName); secured != "" {
 		if err = a.httpConfig.Secured.Set(secured); err != nil {
 			return err
 		}
 		a.httpConfig.Secured.Source = config.SourceEnv
 	}
-	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
+	if serverAddress := os.Getenv(a.httpConfig.Address.EnVarName); serverAddress != "" {
 		if err = a.httpConfig.Address.Set(serverAddress); err != nil {
 			return err
 		}
 		a.httpConfig.Address.Source = config.SourceEnv
 	}
 
-	if auditFile := os.Getenv("AUDIT_FILE"); auditFile != "" {
+	if auditFile := os.Getenv(a.httpConfig.AuditFile.EnVarName); auditFile != "" {
 		if err = a.httpConfig.AuditFile.Set(auditFile); err != nil {
 			return err
 		}
 		a.httpConfig.AuditFile.Source = config.SourceEnv
 	}
 
-	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
+	if auditURL := os.Getenv(a.httpConfig.AuditURL.EnVarName); auditURL != "" {
 		if err = a.httpConfig.AuditURL.Set(auditURL); err != nil {
 			return err
 		}
 		a.httpConfig.AuditURL.Source = config.SourceEnv
 	}
-	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
+	if baseURL := os.Getenv(a.minifierConfig.BaseURL.EnVarName); baseURL != "" {
 		if err = a.minifierConfig.BaseURL.Set(baseURL); err != nil {
 			return err
 		}
@@ -162,25 +162,29 @@ func (a *app) setup() (err error) {
 		if err := d.Decode(&a.configFile); err != nil {
 			return err
 		}
-		fmt.Printf("%v\n", a.configFile)
+		fmt.Printf("%#v\n", a.configFile)
 
 		// override only the defaults
 		if a.configFile.BaseURL != "" && a.minifierConfig.BaseURL.Source == config.SourceDefault {
 			a.minifierConfig.BaseURL.Set(a.configFile.BaseURL)
+			a.minifierConfig.BaseURL.Source = config.SourceFile
 		}
 		if a.configFile.DatabaseDSN != "" && a.sqlConfig.DSN.Source == config.SourceDefault {
 			a.sqlConfig.DSN.Set(a.configFile.DatabaseDSN)
+			a.sqlConfig.DSN.Source = config.SourceFile
 		}
 		if a.configFile.FileStoragePath != "" && a.fileConfig.FilePath.Source == config.SourceDefault {
 			a.fileConfig.FilePath.Set(a.configFile.FileStoragePath)
+			a.fileConfig.FilePath.Source = config.SourceFile
 		}
 		if a.configFile.EnableHTTPS && a.httpConfig.Secured.Source == config.SourceDefault {
 			a.httpConfig.Secured.Set(strconv.FormatBool(a.configFile.EnableHTTPS))
+			a.httpConfig.Secured.Source = config.SourceFile
 		}
 		if a.configFile.ServerAddress != "" && a.httpConfig.Address.Source == config.SourceDefault {
 			a.httpConfig.Address.Set(a.configFile.ServerAddress)
+			a.httpConfig.Address.Source = config.SourceFile
 		}
-
 		if a.configFile.TrustedIPSubnet != "" && a.httpConfig.TrustedIPSubnet.Source == config.SourceDefault {
 			a.httpConfig.TrustedIPSubnet.Set(a.configFile.TrustedIPSubnet)
 			a.httpConfig.TrustedIPSubnet.Source = config.SourceFile

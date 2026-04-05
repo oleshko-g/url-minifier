@@ -20,17 +20,20 @@ func NewConfig() *Config {
 	cfg := Config{
 		Address: config.Option[*address]{
 			Name:        "a",
+			EnVarName:   "SERVER_ADDRESS",
 			Value:       new(address),
 			Default:     "localhost:8080",
 			Description: "Sets the network address and the port for the minifier",
 		},
 		AuditFile: config.Option[*auditFile]{
 			Name:        "audit-file",
+			EnVarName:   "AUDIT_FILE",
 			Value:       new(auditFile),
 			Description: "Sets the file to write audit logs to",
 		},
 		AuditURL: config.Option[*auditURL]{
 			Name:        "audit-url",
+			EnVarName:   "AUDIT_URL",
 			Value:       new(auditURL),
 			Description: "Sets the URL to write audit logs to",
 		},
@@ -47,7 +50,8 @@ func NewConfig() *Config {
 			Description: "Sets the trusted subnet for the minifier HTTP server",
 		},
 		SecretKey: config.Option[*secret]{
-			Value: new(secret),
+			Value:     new(secret),
+			EnVarName: "ENABLE_HTTPS",
 		},
 	}
 

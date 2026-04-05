@@ -25,14 +25,14 @@ type testMinifierResponse struct {
 type testApp struct {
 	minifierConfig *minifier.Config
 	*Config
-	storage.PingerCloser
+	*storage.Storage
 	*minifier.Service
 	*Server
 }
 
 func newTestApp() *testApp {
 	var ta testApp
-
+	ta.Storage = new(storage.Storage)
 	ta.Storage.Storager = memory.NewStrRecords()
 	ta.minifierConfig = minifier.NewConfig()
 	ta.minifierConfig.BaseURL.Set(ta.minifierConfig.BaseURL.Default)

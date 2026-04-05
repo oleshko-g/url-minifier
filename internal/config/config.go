@@ -34,6 +34,7 @@ func (receiver Option[T]) String() string {
 func NewPath() Option[*Path] {
 	return Option[*Path]{
 		Name:        "c",
+		EnVarName:   "CONFIG",
 		Value:       new(Path),
 		Description: "The path to the config file which is applied first and then gets overridden by flags or env vars",
 		Default:     "",

@@ -18,13 +18,11 @@ var _ storage.Storager = (*strRecords)(nil)
 // NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
 func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
 	uks := make(userKeys)
-	records := &strRecords{
+	return &strRecords{
 		mux:      sync.RWMutex{},
 		userKeys: uks,
 		values:   make(values),
 	}
-
-	return records
 }
 
 type (
@@ -55,7 +53,6 @@ func (v strValue) isDeleted() bool {
 	}
 	return time.Now().UTC().After(*v.deletedAt)
 }
-
 
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()
