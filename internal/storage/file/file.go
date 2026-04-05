@@ -29,10 +29,10 @@ func New(c *Config) (file *File, err error) {
 	}
 
 	return &File{
-					p:      fp,
-					mux:    sync.RWMutex{},
-					Config: c,
-				}, nil
+		p:      fp,
+		mux:    sync.RWMutex{},
+		Config: c,
+	}, nil
 }
 
 // File is a filesystem implementation of [minifier.Storager]
@@ -42,7 +42,6 @@ type File struct {
 	p   *os.File
 	*Config
 }
-
 
 // Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {

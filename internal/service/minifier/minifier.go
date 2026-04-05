@@ -175,11 +175,11 @@ func (s *Service) UnMinifyUserURL(ctx context.Context, id string) (value string,
 }
 
 // CountUserStrings returns the number of user strings for a given userID
-func (s *Service) CountUserStrings(ctx context.Context) (int, error) {
+func (s *Service) TotalURLs(ctx context.Context) (int, error) {
 	return s.Storage.CountUserStrings(ctx)
 }
 
 // CountUsers returns the number of users
-func (s *Service) CountUsers(ctx context.Context) (int, error) {
+func (s *Service) TotalUsers(ctx context.Context) (int, error) {
 	return s.Storage.CountUsers(ctx)
 }

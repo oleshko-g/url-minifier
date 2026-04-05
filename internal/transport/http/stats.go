@@ -1,8 +1,10 @@
 package http
 
 import (
+	"context"
 	"net"
 	"net/http"
+	"sync"
 )
 
 // subnet represents a trusted IP subnet in CIDR notation.
@@ -64,10 +66,44 @@ func (s *Server) statsHandler() http.HandlerFunc {
 			return
 		}
 
-		// * TODO: go getNumberOfMinifiedURLs
+		ctx, cancel := context.WithCancelCause(r.Context())
+		defer cancel(nil)
 
-		// * TODO: go getNumberOfUsers
+		var res StatsResponse
 
-		w.WriteHeader(http.StatusNotImplemented)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			users, err := s.TotalUsers(ctx)
+			if err != nil {
+				cancel(err)
+				return
+			}
+			res.Users = users
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			URLs, err := s.TotalURLs(ctx)
+			if err != nil {
+				cancel(err)
+				return
+			}
+			res.URLs = URLs
+		}()
+
+		wg.Wait()
+
+		s.responseWithJSON(w, res, http.StatusOK)
+
 	}
+}
+
+type StatsResponse struct {
+	Users int `json:"users"`
+	URLs  int `json:"urls"`
 }

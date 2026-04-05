@@ -4,8 +4,9 @@
 package mockStorage
 
 import (
-	"github.com/oleshko-g/url-minifier/internal/storage"
 	"sync"
+
+	"github.com/oleshko-g/url-minifier/internal/storage"
 )
 
 // Ensure, that PingerCloserMock does implement storage.PingerCloser.

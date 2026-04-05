@@ -21,6 +21,7 @@ type Counter interface {
 }
 
 // Storager is the expected implementation of storage for the URL minifier
+//
 //go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . Storager
 type Storager interface {
 	Save(key, value string) error
@@ -33,12 +34,14 @@ type Storager interface {
 }
 
 // Pinger is the expected implementation of a pinger for the URL minifier
+//
 //go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . Pinger
 type Pinger interface {
 	Ping() error
 }
 
 // PingerCloser is the expected implementation of storage with a [Pinger] for the URL minifier
+//
 //go:generate moq -pkg mockStorage -out ../mock/storage/storage.go . PingerCloser
 type PingerCloser interface {
 	Pinger

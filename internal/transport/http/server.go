@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
-	"github.com/oleshko-g/url-minifier/internal/storage"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -57,7 +56,12 @@ type Service interface {
 	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
 	io.Closer
-	storage.Counter
+	Stat
+}
+
+type Stat interface {
+	TotalUsers(context.Context) (int, error)
+	TotalURLs(context.Context) (int, error)
 }
 
 type logger interface {
