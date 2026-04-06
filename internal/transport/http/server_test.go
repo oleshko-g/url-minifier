@@ -23,9 +23,9 @@ type testMinifierResponse struct {
 }
 
 type testApp struct {
-	minifierConfig minifier.Config
-	Config
-	storage.StoragePinger
+	minifierConfig *minifier.Config
+	*Config
+	storage.PingerCloser
 	*minifier.Service
 	*Server
 }
@@ -33,11 +33,13 @@ type testApp struct {
 func newTestApp() *testApp {
 	var ta testApp
 
-	ta.StoragePinger = memory.NewStrRecords()
-	ta.minifierConfig.MaxLen = 8
-	ta.minifierConfig.BaseURL().Set("http://localhost:8080/")
-	ta.Service = minifier.New(ta.StoragePinger, &ta.minifierConfig)
-	ta.Server = NewServer(ta.Service, &ta.Config)
+	ta.PingerCloser = memory.NewStrRecords()
+	ta.minifierConfig = minifier.NewConfig()
+	ta.minifierConfig.BaseURL.Set(ta.minifierConfig.BaseURL.Default)
+	ta.Service = minifier.New(ta.PingerCloser, ta.minifierConfig)
+	ta.Config = NewConfig()
+	ta.Config.Address.Set(ta.Config.Address.Default)
+	ta.Server = NewServer(ta.Service, ta.Config)
 	return &ta
 }
 
@@ -58,7 +60,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 				statusCode: 201,
 				headers: map[string]string{
 					"Content-Type":   "text/plain",
-					"Content-Length": strconv.Itoa(len(ta.Service.BaseURL().String()) + 12),
+					"Content-Length": strconv.Itoa(len(ta.Service.BaseURL.String()) + 12),
 				},
 			},
 		},
@@ -66,7 +68,7 @@ func TestServer_minifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.want.body = []byte(ta.Service.Config.BaseURL().String() + "/" + tt.minifiedID)
+			tt.want.body = []byte(ta.Service.Config.BaseURL.String() + "/" + tt.minifiedID)
 
 			req := httptest.NewRequest("POST", "/", bytes.NewBuffer([]byte("https://practicum.yandex.ru/")))
 			req.Header.Set("Content-Type", "text/plain")
@@ -121,7 +123,7 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta.StoragePinger.Save(tt.minifiedID, tt.originalURL)
+			ta.PingerCloser.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)
@@ -168,7 +170,7 @@ func TestServer_minifyJSONURLHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// set wanted response body
-			resData, err := json.Marshal(minifyURLResponse{Result: ta.Service.BaseURL().String() + "/" + tt.minifiedID})
+			resData, err := json.Marshal(minifyURLResponse{Result: ta.Service.BaseURL.String() + "/" + tt.minifiedID})
 			require.NoError(t, err)
 			tt.want.body = resData
 
@@ -292,6 +294,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewServer(tt.s, &Config{})
+			//			s := NewServer(tt.s, NewConfig())
 			got, gotErr := s.chooseCompression(tt.parsedAcceptCodings)
 			assert.Equal(t, tt.want.error, gotErr)
 			assert.Equal(t, tt.want.coding, got)

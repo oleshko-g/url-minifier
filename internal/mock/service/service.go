@@ -21,6 +21,9 @@ var _ http.Service = &ServiceMock{}
 //
 //		// make and configure a mocked http.Service
 //		mockedService := &ServiceMock{
+//			CloseFunc: func() error {
+//				panic("mock out the Close method")
+//			},
 //			DeleteUserURLsFunc: func(ctx context.Context, userID string, minifiedIDs []string) error {
 //				panic("mock out the DeleteUserURLs method")
 //			},
@@ -49,6 +52,9 @@ var _ http.Service = &ServiceMock{}
 //
 //	}
 type ServiceMock struct {
+	// CloseFunc mocks the Close method.
+	CloseFunc func() error
+
 	// DeleteUserURLsFunc mocks the DeleteUserURLs method.
 	DeleteUserURLsFunc func(ctx context.Context, userID string, minifiedIDs []string) error
 
@@ -72,6 +78,9 @@ type ServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Close holds details about calls to the Close method.
+		Close []struct {
+		}
 		// DeleteUserURLs holds details about calls to the DeleteUserURLs method.
 		DeleteUserURLs []struct {
 			// Ctx is the ctx argument value.
@@ -122,6 +131,7 @@ type ServiceMock struct {
 			UserID string
 		}
 	}
+	lockClose           sync.RWMutex
 	lockDeleteUserURLs  sync.RWMutex
 	lockMinifyURL       sync.RWMutex
 	lockMinifyURLs      sync.RWMutex
@@ -129,6 +139,33 @@ type ServiceMock struct {
 	lockUnMinifyURL     sync.RWMutex
 	lockUnMinifyUserURL sync.RWMutex
 	lockUserURLs        sync.RWMutex
+}
+
+// Close calls CloseFunc.
+func (mock *ServiceMock) Close() error {
+	if mock.CloseFunc == nil {
+		panic("ServiceMock.CloseFunc: method is nil but Service.Close was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	mock.lockClose.Unlock()
+	return mock.CloseFunc()
+}
+
+// CloseCalls gets all the calls that were made to Close.
+// Check the length with:
+//
+//	len(mockedService.CloseCalls())
+func (mock *ServiceMock) CloseCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockClose.RLock()
+	calls = mock.calls.Close
+	mock.lockClose.RUnlock()
+	return calls
 }
 
 // DeleteUserURLs calls DeleteUserURLsFunc.

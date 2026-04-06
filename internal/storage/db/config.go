@@ -4,17 +4,26 @@ package db
 import (
 	"net/url"
 
+	"github.com/oleshko-g/url-minifier/internal/config"
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-// Config represents a config of an SQL database
-type Config struct {
-	dataSource
+// NewConfig returns a new [Config] with default values
+func NewConfig() Config {
+	return Config{
+		DSN: config.Option[*dataSource]{
+			Name:        "d",
+			Value:       new(dataSource),
+			Description: "Set the sql db connection string",
+			Default:     "",
+			Source:      config.SourceDefault,
+		},
+	}
 }
 
-// DSN returns a pointer to the [flag.Value] to set the database source name
-func (c *Config) DSN() *dataSource { // revive:disable-line:unexported-return provides the interface to the caller
-	return &c.dataSource
+// Config represents a config of an SQL database
+type Config struct {
+	DSN config.Option[*dataSource]
 }
 
 // dataSource represent a valid Data Source

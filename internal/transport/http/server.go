@@ -28,6 +28,20 @@ type Server struct {
 	auditSubjects []chan auditEvent
 }
 
+// Shutdown shuts down the underlying HTTP server gracefully
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
+}
+
+// Close closes the underlying [Service] and all the audit subjects
+func (s *Server) Close() error {
+	for _, ch := range s.auditSubjects {
+		close(ch)
+	}
+
+	return s.Service.Close()
+}
+
 // Service is the expected URL minifier service
 //
 //go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
@@ -42,6 +56,7 @@ type Service interface {
 	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
 	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
 	Ping() error
+	io.Closer
 }
 
 type logger interface {
@@ -51,16 +66,39 @@ type logger interface {
 }
 
 // NewServer configures and returns an internal [http.Server]
-func NewServer(s Service, cp *Config) *Server {
+func NewServer(s Service, cfg *Config) *Server {
 	srv := &Server{
 		Service: s,
 		server:  &http.Server{},
-		Config:  cp,
+		Config:  cfg,
 	}
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
 
 	srv.logger = slog.New(slog.Default().Handler())
+
+	if srv.Config.Secured.Value != nil {
+		if *srv.Config.Secured.Value {
+			srv.server.TLSConfig = TLSConfig()
+			srv.Address.Value.Port = "443"
+		}
+	}
+
+	if srv.Address.Value != nil {
+		srv.server.Addr = srv.Address.String()
+	}
+
+	if srv.Config.AuditFile.Value != nil {
+		if cfg.AuditFile.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditFile.Value)
+		}
+	}
+
+	if srv.Config.AuditURL.Value != nil {
+		if cfg.AuditURL.Value.enabled {
+			srv.auditors = append(srv.auditors, cfg.AuditURL.Value)
+		}
+	}
 
 	r := chi.NewRouter()
 	r.Use(srv.withLoggingMiddleware)
@@ -81,15 +119,6 @@ func NewServer(s Service, cp *Config) *Server {
 	})
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
-
-	if cp.auditFile.enabled {
-		srv.auditors = append(srv.auditors, &cp.auditFile)
-	}
-
-	if cp.auditURL.enabled {
-		srv.auditors = append(srv.auditors, &cp.auditURL)
-	}
-
 	srv.server.Handler = r
 
 	return srv
@@ -107,8 +136,11 @@ func (s *Server) ListenAndServe() error {
 		}
 	}
 
-	s.server.Addr = s.Address().String()
 	slog.Info(fmt.Sprintf("Minifier is listening on address: %s\n", s.server.Addr))
+
+	if *s.Secured.Value {
+		return s.server.ListenAndServeTLS("", "")
+	}
 
 	return s.server.ListenAndServe()
 }

@@ -17,13 +17,17 @@ func TestNew(t *testing.T) {
 	}{
 		{
 			name:     "no such file or directory",
-			configp:  &Config{fpath: ""},
+			configp:  NewConfig(),
 			wantFile: nil,
 			wantErr:  fs.ErrNotExist,
 		},
 		{
-			name:     "default file path",
-			configp:  &Config{fpath: DefaultFilepath},
+			name: "default file path",
+			configp: func() *Config {
+				cfg := NewConfig()
+				cfg.FilePath.Set(cfg.FilePath.Default)
+				return cfg
+			}(),
 			wantFile: &File{},
 			wantErr:  nil,
 		},

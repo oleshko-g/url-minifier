@@ -86,7 +86,6 @@ type auditFile struct {
 	fp      *os.File
 	mu      sync.Mutex
 	enabled bool
-	Source  string
 }
 
 func (a *auditFile) subscribe(ctx context.Context, auditEvents <-chan auditEvent) {
@@ -129,7 +128,6 @@ func (a *auditFile) String() string {
 type auditURL struct {
 	url     *url.URL
 	enabled bool
-	Source  string
 }
 
 func (a *auditURL) subscribe(ctx context.Context, auditEvent <-chan auditEvent) {

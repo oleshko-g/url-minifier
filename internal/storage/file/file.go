@@ -17,13 +17,13 @@ import (
 )
 
 // New returns a pointer to an opened [File] or an error
-func New(c *Config) (file storage.StoragePinger, err error) {
-	fp, err := os.OpenFile(c.fpath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
+func New(c *Config) (file storage.PingerCloser, err error) {
+	fp, err := os.OpenFile(c.FilePath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
 
-	return storage.NewStoragePingerNoOp(
+	return storage.NewNoOpPingerClose(
 			&File{
 				p:      fp,
 				mux:    sync.RWMutex{},
@@ -268,11 +268,6 @@ func (f *File) newRecordReader() (*recordReader, error) {
 		decoder: dep,
 	}, nil
 }
-
-// defaults
-const (
-	DefaultFilepath path = "minifiedURLs.json"
-)
 
 // UNIX permissions
 const (
