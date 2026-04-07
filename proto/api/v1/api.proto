@@ -4,10 +4,12 @@ package minifier.api.v1;
 
 import "google/protobuf/empty.proto";
 
-service ShortenerService {
-  rpc MinifyURL (MinifyURLRequest) returns (MinifyURLResponse);
-  rpc UnminifyURL (UnminifyURLRequest) returns (UnminifyURLResponse);
-  rpc ListUserURLs (google.protobuf.Empty) returns (UserURLsResponse);
+option go_package = "github.com/oleshko-g/url-minifier/proto/api/v1;url_minifier_v1";
+
+service MinifierService {
+  rpc MinifyURL(MinifyURLRequest) returns (MinifyURLResponse);
+  rpc UnminifyURL(UnminifyURLRequest) returns (UnminifyURLResponse);
+  rpc ListUserURLs(google.protobuf.Empty) returns (UserURLsResponse);
 }
 
 message MinifyURLRequest {
@@ -25,7 +27,6 @@ message UnminifyURLRequest {
 message UnminifyURLResponse {
   string result = 1;
 }
-
 
 message UserURLsResponse {
   repeated URLData url = 1;
