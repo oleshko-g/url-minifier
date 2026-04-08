@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/oleshko-g/url-minifier/internal/transport/config"
 	minifier_v1 "github.com/oleshko-g/url-minifier/proto/api/v1"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -11,7 +12,7 @@ type Server struct {
 	minifier_v1.UnimplementedMinifierServiceServer
 }
 
-func New() *Server {
+func New(cfg *config.Config) *Server {
 	return &Server{}
 }
 

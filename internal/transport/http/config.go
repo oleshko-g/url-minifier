@@ -39,7 +39,7 @@ func NewConfig() *Config {
 		},
 		Secured: config.Option[*secured]{
 			Name:        "s",
-			EnVarName: "ENABLE_HTTPS",
+			EnVarName:   "ENABLE_HTTPS",
 			Value:       new(secured),
 			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
 		},
@@ -51,7 +51,7 @@ func NewConfig() *Config {
 			Description: "Sets the trusted subnet for the minifier HTTP server",
 		},
 		SecretKey: config.Option[*secret]{
-			Value:     new(secret),
+			Value:       new(secret),
 			Description: "Sets a server's secret to authenticate users",
 		},
 	}
