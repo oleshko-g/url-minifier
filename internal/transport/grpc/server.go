@@ -1,8 +1,9 @@
-package grpc
+package oggrpc
 
 import (
 	"context"
 
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/transport/config"
 	minifier_v1 "github.com/oleshko-g/url-minifier/proto/api/v1"
 	"google.golang.org/grpc"
@@ -15,15 +16,20 @@ type Server struct {
 
 type server struct {
 	minifier_v1.UnimplementedMinifierServiceServer
+	srvc minifier.Service
 }
 
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, srvc minifier.Service) *Server {
 	srv := grpc.NewServer()
-	minifier_v1.RegisterMinifierServiceServer(srv, &server{})
+	minifier_v1.RegisterMinifierServiceServer(srv, &server{
+		srvc: srvc,
+	})
+
 	return &Server{}
 }
 
 func (s *server) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLRequest) (*minifier_v1.MinifyURLResponse, error) {
+	s.srvc.MinifyURL(ctx, "", req.GetUrl())
 	return s.UnimplementedMinifierServiceServer.MinifyURL(ctx, req)
 }
 
