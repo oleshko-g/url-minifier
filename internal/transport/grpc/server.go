@@ -28,8 +28,8 @@ func NewServer(cfg *Config, minifier service.Minifier) *Server {
 	})
 
 	return &Server{
-		Server:   srv,
-		Config:   cfg,
+		Server:      srv,
+		Config:      cfg,
 		implemented: &implemented{Minifier: minifier},
 	}
 }
@@ -44,7 +44,7 @@ func (s *Server) ListenAndServe() error {
 	return s.Server.Serve(lis)
 }
 
-func (s *Server) GracefulShutdown() error {
+func (s *Server) GracefulShutdown(ctx context.Context) error {
 	s.Server.GracefulStop()
 	return s.implemented.Minifier.Close()
 }

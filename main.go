@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/config"
@@ -51,7 +52,6 @@ func main() {
 
 	go func() {
 		cancel(a.grpc.Server.ListenAndServe())
-		<-ctx.Done()
 		err := a.grpc.Server.GracefulShutdown()
 		if err != nil {
 			slog.Error("failed a graceful shutdown", "error", err.Error())
@@ -259,6 +259,39 @@ func (a *app) setup() (err error) {
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.minifier.Service.Config.BaseURL.String()))
 	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.http.Server.Config.Address.String()))
+
+	return nil
+}
+
+func (a *app) Shutdown(cause error) error {
+	errCh := make(chan error, 1)
+	successCh := make(chan struct{}, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	go func() {
+		err := a.grpc.Server.GracefulShutdown()
+		if err != nil {
+			errCh <- err
+		}
+		successCh <- struct{}{}
+	}()
+
+	go func() {
+		err := a.http.Server.Shutdown(ctx)
+		if err != nil {
+			errCh <- err
+		}
+		successCh <- struct{}{}
+	}()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errCh:
+			return err
+		case <-successCh:
+		}
+	}
 
 	return nil
 }
