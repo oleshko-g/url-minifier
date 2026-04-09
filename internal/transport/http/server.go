@@ -37,11 +37,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return err
 	}
 
-	return s.Close()
+	return s.close()
 }
 
-// Close closes the underlying [service.Minifier] and all the audit subjects
-func (s *Server) Close() error {
+// close closes the underlying [service.Minifier] and all the audit subjects
+func (s *Server) close() error {
 	for _, ch := range s.auditSubjects {
 		close(ch)
 	}

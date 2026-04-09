@@ -39,25 +39,12 @@ func main() {
 
 	go func() {
 		cancel(a.http.Server.ListenAndServe())
-		defer slog.Info(fmt.Sprintf("cause: %s", ctx.Err()))
-		<-ctx.Done()
-		a.http.Server.Shutdown(ctx)
-		err := a.http.Server.Close()
-		if err != nil {
-			slog.Error("failed a graceful shutdown", "error", err.Error())
-			return
-		}
-		slog.Info("shutdown the HTTP server gracefully")
+		slog.Info("The HTTP listener returned", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
 	}()
 
 	go func() {
 		cancel(a.grpc.Server.ListenAndServe())
-		err := a.grpc.Server.GracefulShutdown()
-		if err != nil {
-			slog.Error("failed a graceful shutdown", "error", err.Error())
-			return
-		}
-		slog.Info("shutdown the gRPC server gracefully")
+		slog.Info("The gRPC listener returned", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
 	}()
 
 	shutdownSignal := make(chan os.Signal, 1)
@@ -65,6 +52,11 @@ func main() {
 	sig := <-shutdownSignal
 	slog.Info(fmt.Sprintf("received the [%s] os.Signal. Shutting down gracefully...", sig.String()))
 	cancel(errors.New("os signal: " + sig.String()))
+
+	err := a.stop()
+	if err != nil {
+		slog.Error(err.Error())
+	}
 }
 
 type app struct {
@@ -263,26 +255,32 @@ func (a *app) setup() (err error) {
 	return nil
 }
 
-func (a *app) Shutdown(cause error) error {
+func (a *app) stop() error {
 	errCh := make(chan error, 1)
 	successCh := make(chan struct{}, 2)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	go func() {
-		err := a.grpc.Server.GracefulShutdown()
+		err := a.grpc.Server.GracefulStop()
 		if err != nil {
+			slog.Error("The gRPC server failed stop gracefully ", "error", err.Error())
 			errCh <- err
+			return
 		}
 		successCh <- struct{}{}
+		slog.Info("The gRPC server stopped gracefully")
 	}()
 
 	go func() {
 		err := a.http.Server.Shutdown(ctx)
 		if err != nil {
+			slog.Error("The HTTP server failed to shutdown gracefully", "error", err.Error())
 			errCh <- err
+			return
 		}
 		successCh <- struct{}{}
+		slog.Info("The HTTP server shutdown gracefully")
 	}()
 
 	for i := 0; i < 2; i++ {

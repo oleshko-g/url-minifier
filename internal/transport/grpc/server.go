@@ -44,7 +44,7 @@ func (s *Server) ListenAndServe() error {
 	return s.Server.Serve(lis)
 }
 
-func (s *Server) GracefulShutdown(ctx context.Context) error {
+func (s *Server) GracefulStop() error {
 	s.Server.GracefulStop()
 	return s.implemented.Minifier.Close()
 }
