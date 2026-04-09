@@ -1,4 +1,4 @@
-package oggrpc
+package grpc
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package config //revive:disable-line:var-naming
+package grpc //revive:disable-line:var-naming
 
 import (
 	"errors"

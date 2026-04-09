@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -30,7 +31,12 @@ type Server struct {
 
 // Shutdown shuts down the underlying HTTP server gracefully
 func (s *Server) Shutdown(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
+	err := s.server.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	return s.Close()
 }
 
 // Close closes the underlying [Service] and all the audit subjects

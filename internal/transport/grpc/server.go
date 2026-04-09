@@ -1,11 +1,10 @@
-package oggrpc
+package grpc
 
 import (
 	"context"
 	"net"
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
-	"github.com/oleshko-g/url-minifier/internal/transport/config"
 	minifier_v1 "github.com/oleshko-g/url-minifier/proto/api/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,21 +12,26 @@ import (
 
 type Server struct {
 	*grpc.Server
-	config.Config
+	*Config
+	*service
 }
 
-type server struct {
+type service struct {
 	minifier_v1.UnimplementedMinifierServiceServer
 	srvc minifier.Service
 }
 
-func NewServer(cfg *config.Config, srvc minifier.Service) *Server {
+func NewServer(cfg *Config, srvc minifier.Service) *Server {
 	srv := grpc.NewServer()
-	minifier_v1.RegisterMinifierServiceServer(srv, &server{
+	minifier_v1.RegisterMinifierServiceServer(srv, &service{
 		srvc: srvc,
 	})
 
-	return &Server{}
+	return &Server{
+		Server:  srv,
+		Config:  cfg,
+		service: &service{srvc: srvc},
+	}
 }
 
 // ListenAndServe creates a listener on the configured address and serves incoming gRPC requests.
@@ -40,15 +44,20 @@ func (s *Server) ListenAndServe() error {
 	return s.Server.Serve(lis)
 }
 
-func (s *server) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLRequest) (*minifier_v1.MinifyURLResponse, error) {
+func (s *Server) GracefulShutdown() error {
+	s.Server.GracefulStop()
+	return s.service.srvc.Close()
+}
+
+func (s *service) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLRequest) (*minifier_v1.MinifyURLResponse, error) {
 	s.srvc.MinifyURL(ctx, "", req.GetUrl())
 	return s.UnimplementedMinifierServiceServer.MinifyURL(ctx, req)
 }
 
-func (s *server) UnminifyURL(ctx context.Context, req *minifier_v1.UnminifyURLRequest) (*minifier_v1.UnminifyURLResponse, error) {
+func (s *service) UnminifyURL(ctx context.Context, req *minifier_v1.UnminifyURLRequest) (*minifier_v1.UnminifyURLResponse, error) {
 	return s.UnimplementedMinifierServiceServer.UnminifyURL(ctx, req)
 }
 
-func (s *server) ListUserURLs(ctx context.Context, req *emptypb.Empty) (*minifier_v1.UserURLsResponse, error) {
+func (s *service) ListUserURLs(ctx context.Context, req *emptypb.Empty) (*minifier_v1.UserURLsResponse, error) {
 	return s.UnimplementedMinifierServiceServer.ListUserURLs(ctx, req)
 }
