@@ -2,6 +2,7 @@ package oggrpc
 
 import (
 	"context"
+	"net"
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/transport/config"
@@ -12,6 +13,7 @@ import (
 
 type Server struct {
 	*grpc.Server
+	config.Config
 }
 
 type server struct {
@@ -26,6 +28,16 @@ func NewServer(cfg *config.Config, srvc minifier.Service) *Server {
 	})
 
 	return &Server{}
+}
+
+// ListenAndServe creates a listener on the configured address and serves incoming gRPC requests.
+func (s *Server) ListenAndServe() error {
+	lis, err := net.Listen("tcp", s.Address.Value.String())
+	if err != nil {
+		return err
+	}
+
+	return s.Server.Serve(lis)
 }
 
 func (s *server) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLRequest) (*minifier_v1.MinifyURLResponse, error) {

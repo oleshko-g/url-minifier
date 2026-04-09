@@ -18,14 +18,15 @@ var errParsingAddress = errors.New("error parsing address")
 func NewConfig() *Config {
 	cfg := Config{
 		Address: config.Option[*address]{
-			Name:        "a",
-			EnVarName:   "SERVER_ADDRESS",
+			Name:        "grpc_address",
+			EnVarName:   "GRPC_ADDRESS",
 			Value:       new(address),
 			Default:     "localhost:8081",
 			Description: "Sets the network address and the port for the minifier",
 		},
 		SecretKey: config.Option[*secret]{
 			Value: new(secret),
+			Description: "Secret key is used to sign user auth tokens.",
 		},
 	}
 
