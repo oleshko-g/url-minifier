@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
@@ -214,7 +215,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	}
 	tests := []struct {
 		name                string // description of this test case
-		s                   Service
+		s                   service.Minifier
 		parsedAcceptCodings map[coding]qualityValue
 		want                chooseCompressionResult
 	}{

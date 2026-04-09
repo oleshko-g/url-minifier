@@ -90,11 +90,11 @@ type app struct {
 func (a *app) setup() (err error) {
 	// Set the default config values
 	a.configFilePath = config.NewPath()
+	a.grpc.Config = grpc.NewConfig()
 	a.http.Config = http.NewConfig()
 	a.sqlConfig = db.NewConfig()
 	a.fileConfig = file.NewConfig()
 	a.minifier.Config = minifier.NewConfig()
-	a.grpc.Config = grpc.NewConfig()
 
 	err = a.fileConfig.FilePath.Set(a.fileConfig.FilePath.Default)
 	if err != nil {
@@ -255,7 +255,7 @@ func (a *app) setup() (err error) {
 
 	a.minifier.Service = minifier.New(&a.Storage, a.minifier.Config)
 	a.http.Server = http.NewServer(a.minifier.Service, a.http.Config)
-	a.grpc.Server = grpc.NewServer(a.grpc.Config, *a.minifier.Service)
+	a.grpc.Server = grpc.NewServer(a.grpc.Config, a.minifier.Service)
 
 	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.minifier.Service.Config.BaseURL.String()))
 	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.http.Server.Config.Address.String()))

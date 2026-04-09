@@ -5,22 +5,21 @@ package minifier
 
 import (
 	"context"
-	"sync"
-
+	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
-	"github.com/oleshko-g/url-minifier/internal/transport/http"
+	"sync"
 )
 
-// Ensure, that ServiceMock does implement http.Service.
+// Ensure, that MinifierMock does implement service.Minifier.
 // If this is not the case, regenerate this file with moq.
-var _ http.Service = &ServiceMock{}
+var _ service.Minifier = &MinifierMock{}
 
-// ServiceMock is a mock implementation of http.Service.
+// MinifierMock is a mock implementation of service.Minifier.
 //
-//	func TestSomethingThatUsesService(t *testing.T) {
+//	func TestSomethingThatUsesMinifier(t *testing.T) {
 //
-//		// make and configure a mocked http.Service
-//		mockedService := &ServiceMock{
+//		// make and configure a mocked service.Minifier
+//		mockedMinifier := &MinifierMock{
 //			CloseFunc: func() error {
 //				panic("mock out the Close method")
 //			},
@@ -53,11 +52,11 @@ var _ http.Service = &ServiceMock{}
 //			},
 //		}
 //
-//		// use mockedService in code that requires http.Service
+//		// use mockedMinifier in code that requires service.Minifier
 //		// and then make assertions.
 //
 //	}
-type ServiceMock struct {
+type MinifierMock struct {
 	// CloseFunc mocks the Close method.
 	CloseFunc func() error
 
@@ -166,9 +165,9 @@ type ServiceMock struct {
 }
 
 // Close calls CloseFunc.
-func (mock *ServiceMock) Close() error {
+func (mock *MinifierMock) Close() error {
 	if mock.CloseFunc == nil {
-		panic("ServiceMock.CloseFunc: method is nil but Service.Close was just called")
+		panic("MinifierMock.CloseFunc: method is nil but Minifier.Close was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -181,8 +180,8 @@ func (mock *ServiceMock) Close() error {
 // CloseCalls gets all the calls that were made to Close.
 // Check the length with:
 //
-//	len(mockedService.CloseCalls())
-func (mock *ServiceMock) CloseCalls() []struct {
+//	len(mockedMinifier.CloseCalls())
+func (mock *MinifierMock) CloseCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -193,9 +192,9 @@ func (mock *ServiceMock) CloseCalls() []struct {
 }
 
 // DeleteUserURLs calls DeleteUserURLsFunc.
-func (mock *ServiceMock) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error {
+func (mock *MinifierMock) DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error {
 	if mock.DeleteUserURLsFunc == nil {
-		panic("ServiceMock.DeleteUserURLsFunc: method is nil but Service.DeleteUserURLs was just called")
+		panic("MinifierMock.DeleteUserURLsFunc: method is nil but Minifier.DeleteUserURLs was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
@@ -215,8 +214,8 @@ func (mock *ServiceMock) DeleteUserURLs(ctx context.Context, userID string, mini
 // DeleteUserURLsCalls gets all the calls that were made to DeleteUserURLs.
 // Check the length with:
 //
-//	len(mockedService.DeleteUserURLsCalls())
-func (mock *ServiceMock) DeleteUserURLsCalls() []struct {
+//	len(mockedMinifier.DeleteUserURLsCalls())
+func (mock *MinifierMock) DeleteUserURLsCalls() []struct {
 	Ctx         context.Context
 	UserID      string
 	MinifiedIDs []string
@@ -233,9 +232,9 @@ func (mock *ServiceMock) DeleteUserURLsCalls() []struct {
 }
 
 // MinifyURL calls MinifyURLFunc.
-func (mock *ServiceMock) MinifyURL(ctx context.Context, userID string, url string) (string, error) {
+func (mock *MinifierMock) MinifyURL(ctx context.Context, userID string, url string) (string, error) {
 	if mock.MinifyURLFunc == nil {
-		panic("ServiceMock.MinifyURLFunc: method is nil but Service.MinifyURL was just called")
+		panic("MinifierMock.MinifyURLFunc: method is nil but Minifier.MinifyURL was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -255,8 +254,8 @@ func (mock *ServiceMock) MinifyURL(ctx context.Context, userID string, url strin
 // MinifyURLCalls gets all the calls that were made to MinifyURL.
 // Check the length with:
 //
-//	len(mockedService.MinifyURLCalls())
-func (mock *ServiceMock) MinifyURLCalls() []struct {
+//	len(mockedMinifier.MinifyURLCalls())
+func (mock *MinifierMock) MinifyURLCalls() []struct {
 	Ctx    context.Context
 	UserID string
 	URL    string
@@ -273,9 +272,9 @@ func (mock *ServiceMock) MinifyURLCalls() []struct {
 }
 
 // MinifyURLs calls MinifyURLsFunc.
-func (mock *ServiceMock) MinifyURLs(ctx context.Context, userID string, urls []map[string]string) ([]map[string]string, error) {
+func (mock *MinifierMock) MinifyURLs(ctx context.Context, userID string, urls []map[string]string) ([]map[string]string, error) {
 	if mock.MinifyURLsFunc == nil {
-		panic("ServiceMock.MinifyURLsFunc: method is nil but Service.MinifyURLs was just called")
+		panic("MinifierMock.MinifyURLsFunc: method is nil but Minifier.MinifyURLs was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -295,8 +294,8 @@ func (mock *ServiceMock) MinifyURLs(ctx context.Context, userID string, urls []m
 // MinifyURLsCalls gets all the calls that were made to MinifyURLs.
 // Check the length with:
 //
-//	len(mockedService.MinifyURLsCalls())
-func (mock *ServiceMock) MinifyURLsCalls() []struct {
+//	len(mockedMinifier.MinifyURLsCalls())
+func (mock *MinifierMock) MinifyURLsCalls() []struct {
 	Ctx    context.Context
 	UserID string
 	Urls   []map[string]string
@@ -313,9 +312,9 @@ func (mock *ServiceMock) MinifyURLsCalls() []struct {
 }
 
 // Ping calls PingFunc.
-func (mock *ServiceMock) Ping() error {
+func (mock *MinifierMock) Ping() error {
 	if mock.PingFunc == nil {
-		panic("ServiceMock.PingFunc: method is nil but Service.Ping was just called")
+		panic("MinifierMock.PingFunc: method is nil but Minifier.Ping was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -328,8 +327,8 @@ func (mock *ServiceMock) Ping() error {
 // PingCalls gets all the calls that were made to Ping.
 // Check the length with:
 //
-//	len(mockedService.PingCalls())
-func (mock *ServiceMock) PingCalls() []struct {
+//	len(mockedMinifier.PingCalls())
+func (mock *MinifierMock) PingCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -340,9 +339,9 @@ func (mock *ServiceMock) PingCalls() []struct {
 }
 
 // TotalURLs calls TotalURLsFunc.
-func (mock *ServiceMock) TotalURLs(contextMoqParam context.Context) (int, error) {
+func (mock *MinifierMock) TotalURLs(contextMoqParam context.Context) (int, error) {
 	if mock.TotalURLsFunc == nil {
-		panic("ServiceMock.TotalURLsFunc: method is nil but Service.TotalURLs was just called")
+		panic("MinifierMock.TotalURLsFunc: method is nil but Minifier.TotalURLs was just called")
 	}
 	callInfo := struct {
 		ContextMoqParam context.Context
@@ -358,8 +357,8 @@ func (mock *ServiceMock) TotalURLs(contextMoqParam context.Context) (int, error)
 // TotalURLsCalls gets all the calls that were made to TotalURLs.
 // Check the length with:
 //
-//	len(mockedService.TotalURLsCalls())
-func (mock *ServiceMock) TotalURLsCalls() []struct {
+//	len(mockedMinifier.TotalURLsCalls())
+func (mock *MinifierMock) TotalURLsCalls() []struct {
 	ContextMoqParam context.Context
 } {
 	var calls []struct {
@@ -372,9 +371,9 @@ func (mock *ServiceMock) TotalURLsCalls() []struct {
 }
 
 // TotalUsers calls TotalUsersFunc.
-func (mock *ServiceMock) TotalUsers(contextMoqParam context.Context) (int, error) {
+func (mock *MinifierMock) TotalUsers(contextMoqParam context.Context) (int, error) {
 	if mock.TotalUsersFunc == nil {
-		panic("ServiceMock.TotalUsersFunc: method is nil but Service.TotalUsers was just called")
+		panic("MinifierMock.TotalUsersFunc: method is nil but Minifier.TotalUsers was just called")
 	}
 	callInfo := struct {
 		ContextMoqParam context.Context
@@ -390,8 +389,8 @@ func (mock *ServiceMock) TotalUsers(contextMoqParam context.Context) (int, error
 // TotalUsersCalls gets all the calls that were made to TotalUsers.
 // Check the length with:
 //
-//	len(mockedService.TotalUsersCalls())
-func (mock *ServiceMock) TotalUsersCalls() []struct {
+//	len(mockedMinifier.TotalUsersCalls())
+func (mock *MinifierMock) TotalUsersCalls() []struct {
 	ContextMoqParam context.Context
 } {
 	var calls []struct {
@@ -404,9 +403,9 @@ func (mock *ServiceMock) TotalUsersCalls() []struct {
 }
 
 // UnMinifyURL calls UnMinifyURLFunc.
-func (mock *ServiceMock) UnMinifyURL(id string) (string, error) {
+func (mock *MinifierMock) UnMinifyURL(id string) (string, error) {
 	if mock.UnMinifyURLFunc == nil {
-		panic("ServiceMock.UnMinifyURLFunc: method is nil but Service.UnMinifyURL was just called")
+		panic("MinifierMock.UnMinifyURLFunc: method is nil but Minifier.UnMinifyURL was just called")
 	}
 	callInfo := struct {
 		ID string
@@ -422,8 +421,8 @@ func (mock *ServiceMock) UnMinifyURL(id string) (string, error) {
 // UnMinifyURLCalls gets all the calls that were made to UnMinifyURL.
 // Check the length with:
 //
-//	len(mockedService.UnMinifyURLCalls())
-func (mock *ServiceMock) UnMinifyURLCalls() []struct {
+//	len(mockedMinifier.UnMinifyURLCalls())
+func (mock *MinifierMock) UnMinifyURLCalls() []struct {
 	ID string
 } {
 	var calls []struct {
@@ -436,9 +435,9 @@ func (mock *ServiceMock) UnMinifyURLCalls() []struct {
 }
 
 // UnMinifyUserURL calls UnMinifyUserURLFunc.
-func (mock *ServiceMock) UnMinifyUserURL(ctx context.Context, id string) (string, bool, error) {
+func (mock *MinifierMock) UnMinifyUserURL(ctx context.Context, id string) (string, bool, error) {
 	if mock.UnMinifyUserURLFunc == nil {
-		panic("ServiceMock.UnMinifyUserURLFunc: method is nil but Service.UnMinifyUserURL was just called")
+		panic("MinifierMock.UnMinifyUserURLFunc: method is nil but Minifier.UnMinifyUserURL was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -456,8 +455,8 @@ func (mock *ServiceMock) UnMinifyUserURL(ctx context.Context, id string) (string
 // UnMinifyUserURLCalls gets all the calls that were made to UnMinifyUserURL.
 // Check the length with:
 //
-//	len(mockedService.UnMinifyUserURLCalls())
-func (mock *ServiceMock) UnMinifyUserURLCalls() []struct {
+//	len(mockedMinifier.UnMinifyUserURLCalls())
+func (mock *MinifierMock) UnMinifyUserURLCalls() []struct {
 	Ctx context.Context
 	ID  string
 } {
@@ -472,9 +471,9 @@ func (mock *ServiceMock) UnMinifyUserURLCalls() []struct {
 }
 
 // UserURLs calls UserURLsFunc.
-func (mock *ServiceMock) UserURLs(ctx context.Context, userID string) ([]minifier.URL, error) {
+func (mock *MinifierMock) UserURLs(ctx context.Context, userID string) ([]minifier.URL, error) {
 	if mock.UserURLsFunc == nil {
-		panic("ServiceMock.UserURLsFunc: method is nil but Service.UserURLs was just called")
+		panic("MinifierMock.UserURLsFunc: method is nil but Minifier.UserURLs was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -492,8 +491,8 @@ func (mock *ServiceMock) UserURLs(ctx context.Context, userID string) ([]minifie
 // UserURLsCalls gets all the calls that were made to UserURLs.
 // Check the length with:
 //
-//	len(mockedService.UserURLsCalls())
-func (mock *ServiceMock) UserURLsCalls() []struct {
+//	len(mockedMinifier.UserURLsCalls())
+func (mock *MinifierMock) UserURLsCalls() []struct {
 	Ctx    context.Context
 	UserID string
 } {
