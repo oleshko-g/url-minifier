@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/service"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
 	"github.com/stretchr/testify/assert"

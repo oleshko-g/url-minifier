@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/service"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 )
 
 // Server is the internal implementation of [http.Server]
@@ -53,8 +53,6 @@ func (s *Server) Serve(l net.Listener) error {
 	return s.server.Serve(l)
 }
 
-
-
 type logger interface {
 	Debug(msg string, args ...any)
 	Error(msg string, args ...any)
@@ -65,8 +63,8 @@ type logger interface {
 func NewServer(s service.Minifier, cfg *Config) *Server {
 	srv := &Server{
 		Minifier: s,
-		server:  &http.Server{},
-		Config:  cfg,
+		server:   &http.Server{},
+		Config:   cfg,
 	}
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}

@@ -25,7 +25,7 @@ func NewConfig() *Config {
 			Description: "Sets the network address and the port for the minifier",
 		},
 		SecretKey: config.Option[*secret]{
-			Value: new(secret),
+			Value:       new(secret),
 			Description: "Secret key is used to sign user auth tokens.",
 		},
 	}
