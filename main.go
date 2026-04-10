@@ -3,7 +3,6 @@ package main //revive:disable-line
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -34,24 +33,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer cancel(nil)
-
-	go func() {
-		cancel(a.http.Server.ListenAndServe())
-		slog.Info("The HTTP listener returned", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
-	}()
-
-	go func() {
-		cancel(a.grpc.Server.ListenAndServe())
-		slog.Info("The gRPC listener returned", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
-	}()
+	errCh := a.start()
 
 	shutdownSignal := make(chan os.Signal, 1)
 	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	sig := <-shutdownSignal
-	slog.Info(fmt.Sprintf("received the [%s] os.Signal. Shutting down gracefully...", sig.String()))
-	cancel(errors.New("os signal: " + sig.String()))
+
+	select {
+	case err := <-errCh:
+		slog.Info(fmt.Sprintf("received the error: [%s] ", err.Error()))
+	case sig := <-shutdownSignal:
+		slog.Info(fmt.Sprintf("received the os.Signal: [%s] ", sig.String()))
+	}
+
+	slog.Info("Shutting down gracefully...")
 
 	err := a.stop()
 	if err != nil {
@@ -253,6 +247,26 @@ func (a *app) setup() (err error) {
 	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.http.Server.Config.Address.String()))
 
 	return nil
+}
+
+func (a *app) start() <-chan error {
+	errCh := make(chan error, 2)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	go func() {
+		err := a.http.Server.ListenAndServe()
+		cancel(err)
+		errCh <- err
+		slog.Info("The HTTP listener returned.", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
+	}()
+
+	go func() {
+		err := a.grpc.Server.ListenAndServe()
+		cancel(err)
+		errCh <- err
+		slog.Info("The gRPC listener returned.", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
+	}()
+
+	return errCh
 }
 
 func (a *app) stop() error {
