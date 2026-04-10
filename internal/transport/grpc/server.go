@@ -22,16 +22,15 @@ type implemented struct {
 }
 
 func NewServer(cfg *Config, minifier service.Minifier) *Server {
-	srv := grpc.NewServer()
-	minifier_v1.RegisterMinifierServiceServer(srv, &implemented{
-		Minifier: minifier,
-	})
-
-	return &Server{
-		Server:      srv,
+	s := &Server{
 		Config:      cfg,
 		implemented: &implemented{Minifier: minifier},
 	}
+	s.Server = grpc.NewServer(s.authOption())
+
+	minifier_v1.RegisterMinifierServiceServer(s.Server, s.implemented)
+
+	return s
 }
 
 // ListenAndServe creates a listener on the configured address and serves incoming gRPC requests.

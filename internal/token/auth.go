@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// Authenticate parses the signed token value, verifies the signature, and returns the token value or an error.
 func Authenticate(signedTokenValue, secret string) (string, error) {
 	tokenParts, err := parseSignedToken(signedTokenValue)
 	if err != nil {
