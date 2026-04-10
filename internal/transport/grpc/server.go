@@ -3,10 +3,12 @@ package grpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"github.com/oleshko-g/url-minifier/internal/transform"
 	minifier_v1 "github.com/oleshko-g/url-minifier/proto/api/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -77,7 +79,7 @@ func (s *implemented) UnminifyURL(ctx context.Context, req *minifier_v1.Unminify
 
 	originalURL, isDeleted, err := s.Minifier.UnMinifyUserURL(ctx, req.GetId())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrInternalServerError, err)
 	}
 
 	if isDeleted {
@@ -90,5 +92,23 @@ func (s *implemented) UnminifyURL(ctx context.Context, req *minifier_v1.Unminify
 }
 
 func (s *implemented) ListUserURLs(ctx context.Context, req *emptypb.Empty) (*minifier_v1.UserURLsResponse, error) {
-	return s.UnimplementedMinifierServiceServer.ListUserURLs(ctx, req)
+	userID := metadata.ValueFromIncomingContext(ctx, "userID")
+	if len(userID) != 1 {
+		return nil, ErrUnauthenticated
+	}
+	URLs, err := s.Minifier.UserURLs(ctx, userID[0])
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInternalServerError, err)
+	}
+
+	URLData := transform.SliceToSlice(URLs, func(mURL minifier.URL) *minifier_v1.URLData {
+		return &minifier_v1.URLData{
+			OriginalUrl: mURL.OriginalURL.String(),
+			ShortUrl:    mURL.MinifiedURL.String(),
+		}
+	})
+
+	return &minifier_v1.UserURLsResponse{
+		Url: URLData,
+	}, nil
 }
