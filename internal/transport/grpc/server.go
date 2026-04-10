@@ -2,11 +2,14 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/oleshko-g/url-minifier/internal/service"
+	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	minifier_v1 "github.com/oleshko-g/url-minifier/proto/api/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -49,8 +52,21 @@ func (s *Server) GracefulStop() error {
 }
 
 func (s *implemented) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLRequest) (*minifier_v1.MinifyURLResponse, error) {
-	s.Minifier.MinifyURL(ctx, "", req.GetUrl())
-	return s.UnimplementedMinifierServiceServer.MinifyURL(ctx, req)
+	userID := metadata.ValueFromIncomingContext(ctx, "userID")
+	if len(userID) != 1 {
+		return nil, ErrUnauthenticated
+	}
+
+	minifiedURL, err := s.Minifier.MinifyURL(ctx, userID[0], req.GetUrl())
+	if err != nil {
+		if !errors.Is(err, minifier.ErrMinifiedAlready) {
+			return nil, ErrInternalServerError
+		}
+
+		return &minifier_v1.MinifyURLResponse{Result: minifiedURL}, err
+	}
+
+	return &minifier_v1.MinifyURLResponse{Result: minifiedURL}, nil
 }
 
 func (s *implemented) UnminifyURL(ctx context.Context, req *minifier_v1.UnminifyURLRequest) (*minifier_v1.UnminifyURLResponse, error) {

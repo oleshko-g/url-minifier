@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/oleshko-g/url-minifier/internal/token"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -56,5 +55,3 @@ func (s *Server) authOption() grpc.ServerOption {
 		return handler(ctx, req)
 	})
 }
-
-var ErrUnauthenticated = errors.New(codes.Unauthenticated.String())
