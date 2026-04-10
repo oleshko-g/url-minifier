@@ -5,10 +5,9 @@ package minifier
 
 import (
 	"context"
-	"sync"
-
 	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
+	"sync"
 )
 
 // Ensure, that MinifierMock does implement service.Minifier.
