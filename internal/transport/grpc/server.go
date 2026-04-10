@@ -70,7 +70,23 @@ func (s *implemented) MinifyURL(ctx context.Context, req *minifier_v1.MinifyURLR
 }
 
 func (s *implemented) UnminifyURL(ctx context.Context, req *minifier_v1.UnminifyURLRequest) (*minifier_v1.UnminifyURLResponse, error) {
-	return s.UnimplementedMinifierServiceServer.UnminifyURL(ctx, req)
+	userID := metadata.ValueFromIncomingContext(ctx, "userID")
+	if len(userID) != 1 {
+		return nil, ErrUnauthenticated
+	}
+
+	originalURL, isDeleted, err := s.Minifier.UnMinifyUserURL(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	if isDeleted {
+		return nil, ErrNotFound
+	}
+
+	return &minifier_v1.UnminifyURLResponse{
+		Result: originalURL,
+	}, nil
 }
 
 func (s *implemented) ListUserURLs(ctx context.Context, req *emptypb.Empty) (*minifier_v1.UserURLsResponse, error) {
