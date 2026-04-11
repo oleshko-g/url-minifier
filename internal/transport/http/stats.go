@@ -40,17 +40,16 @@ func (t *subnet) String() string {
 
 func (s *Server) statsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// * TODO: check trusted subnet
 		defer r.Body.Close()
 
 		if s.Config.TrustedIPSubnet.Value == nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		realIPString := r.Header.Get("X-Real-IP")
 		if realIPString == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
@@ -62,7 +61,7 @@ func (s *Server) statsHandler() http.HandlerFunc {
 		}
 
 		if !s.Config.TrustedIPSubnet.Value.IPNet.Contains(ip) {
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 

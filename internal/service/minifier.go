@@ -9,7 +9,7 @@ import (
 
 // Minifier is the expected URL minifier service
 //
-//go:generate moq -pkg minifier -out ../mock/minifier.go . Minifier
+//go:generate moq -pkg minifier -out ../mock/service/minifier.go . Minifier
 type Minifier interface {
 	MinifyURL(ctx context.Context, userID string, url string) (minifiedURL string, err error)
 	MinifyURLs(ctx context.Context, userID string,
