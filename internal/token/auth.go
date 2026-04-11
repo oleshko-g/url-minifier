@@ -11,11 +11,11 @@ import (
 
 // Authenticate parses the signed token value, verifies the signature, and returns the token value or an error.
 func Authenticate(signedTokenValue, secret string) (string, error) {
-	tokenParts, err := parseSignedToken(signedTokenValue)
+	tokenParts, err := ParseSignedToken(signedTokenValue)
 	if err != nil {
 		return "", err
 	}
-	err = verify(tokenParts[0], signedTokenValue, secret)
+	err = Verify(tokenParts[0], signedTokenValue, secret)
 	if err != nil {
 		return "", err
 	}
@@ -54,9 +54,9 @@ func sign(s, secretKey string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-// verify re-signs tokenValue with the secret and compares against signedTokenValue.
+// Verify re-signs tokenValue with the secret and compares against signedTokenValue.
 // If resignedTokenValue isn't equal to signedTokenValue, returns [ErrInvalidAuthTokenValue].
-func verify(tokenValue, signedTokenValue, secret string) error {
+func Verify(tokenValue, signedTokenValue, secret string) error {
 	resignedTokenValue, err := New(tokenValue, secret)
 	if err != nil {
 		return err
@@ -69,10 +69,10 @@ func verify(tokenValue, signedTokenValue, secret string) error {
 	return nil
 }
 
-// parseSignedToken decodes and cuts tokenValue into 2 parts.
+// ParseSignedToken decodes and cuts tokenValue into 2 parts.
 // The 1st part is the value.
 // The 2nd part is the signature of the value.
-func parseSignedToken(tokenValue string) (tokenParts [2]string, err error) {
+func ParseSignedToken(tokenValue string) (tokenParts [2]string, err error) {
 	decodedTokenValue, err := hex.DecodeString(tokenValue)
 	if err != nil {
 		return [2]string{}, err
