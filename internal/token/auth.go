@@ -27,7 +27,7 @@ func Authenticate(signedTokenValue, secret string) (string, error) {
 func New(token, secret string) (signedToken string, err error) {
 	signature, err := sign(token, secret)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	sb := strings.Builder{}
