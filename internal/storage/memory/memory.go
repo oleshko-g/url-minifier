@@ -13,17 +13,16 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
-// NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
-func NewStrRecords() storage.PingerCloser { // revive:disable-line:unexported-return provides the interface to the caller
-	uks := make(userKeys)
-	records := storage.NewNoOpPingerClose(
-		&strRecords{
-			mux:      sync.RWMutex{},
-			userKeys: uks,
-			values:   make(values),
-		})
+var _ storage.Storager = (*strRecords)(nil)
 
-	return records
+// NewStrRecords initializes and returns an in-memory implementation of [minifier.Storager]
+func NewStrRecords() *strRecords { // revive:disable-line:unexported-return provides the interface to the caller
+	uks := make(userKeys)
+	return &strRecords{
+		mux:      sync.RWMutex{},
+		userKeys: uks,
+		values:   make(values),
+	}
 }
 
 type (
@@ -54,8 +53,6 @@ func (v strValue) isDeleted() bool {
 	}
 	return time.Now().UTC().After(*v.deletedAt)
 }
-
-var _ storage.Storager = (*strRecords)(nil)
 
 func (s *strRecords) Save(key, value string) error {
 	s.mux.Lock()

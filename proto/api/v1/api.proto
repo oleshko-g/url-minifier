@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package minifier.api.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/oleshko-g/url-minifier/proto/api/v1;url_minifier_v1";
+
+service MinifierService {
+  rpc MinifyURL(MinifyURLRequest) returns (MinifyURLResponse);
+  rpc UnminifyURL(UnminifyURLRequest) returns (UnminifyURLResponse);
+  rpc ListUserURLs(google.protobuf.Empty) returns (UserURLsResponse);
+}
+
+message MinifyURLRequest {
+  string url = 1;
+}
+
+message MinifyURLResponse {
+  string result = 1;
+}
+
+message UnminifyURLRequest {
+  string id = 1;
+}
+
+message UnminifyURLResponse {
+  string result = 1;
+}
+
+message UserURLsResponse {
+  repeated URLData url = 1;
+}
+
+message URLData {
+  string short_url = 1;
+  string original_url = 2;
+}

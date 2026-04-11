@@ -20,27 +20,39 @@ func NewConfig() *Config {
 	cfg := Config{
 		Address: config.Option[*address]{
 			Name:        "a",
+			EnVarName:   "SERVER_ADDRESS",
 			Value:       new(address),
 			Default:     "localhost:8080",
 			Description: "Sets the network address and the port for the minifier",
 		},
 		AuditFile: config.Option[*auditFile]{
 			Name:        "audit-file",
+			EnVarName:   "AUDIT_FILE",
 			Value:       new(auditFile),
 			Description: "Sets the file to write audit logs to",
 		},
 		AuditURL: config.Option[*auditURL]{
 			Name:        "audit-url",
+			EnVarName:   "AUDIT_URL",
 			Value:       new(auditURL),
 			Description: "Sets the URL to write audit logs to",
 		},
 		Secured: config.Option[*secured]{
 			Name:        "s",
+			EnVarName:   "ENABLE_HTTPS",
 			Value:       new(secured),
 			Description: "Sets the \"secured\" flag. If set the minifier HTTP server listens using TLS protocol",
 		},
+		TrustedIPSubnet: config.Option[*subnet]{
+			Name:        "t",
+			EnVarName:   "TRUSTED_SUBNET",
+			Value:       new(subnet),
+			Default:     "127.0.0.1/8",
+			Description: "Sets the trusted subnet for the minifier HTTP server",
+		},
 		SecretKey: config.Option[*secret]{
-			Value: new(secret),
+			Value:       new(secret),
+			Description: "Sets a server's secret to authenticate users",
 		},
 	}
 
@@ -59,18 +71,22 @@ func NewConfig() *Config {
 	cfg.AuditURL.Set(cfg.AuditURL.Default)
 	cfg.AuditURL.Source = config.SourceDefault
 
+	cfg.TrustedIPSubnet.Set(cfg.TrustedIPSubnet.Default)
+	cfg.TrustedIPSubnet.Source = config.SourceFile
+
 	return &cfg
 }
 
 // Config contains fields and [flag.Value]s to set up the [Server]
 type Config struct {
-	Address       config.Option[*address]
-	SecretKey     config.Option[*secret]
-	Secured       config.Option[*secured]
-	AuditFile     config.Option[*auditFile]
-	AuditURL      config.Option[*auditURL]
-	canCompress   codings // MUST contain at least one element. [codingIdentity] MUST be the last element
-	canDecompress map[coding]struct{}
+	TrustedIPSubnet config.Option[*subnet]
+	Address         config.Option[*address]
+	SecretKey       config.Option[*secret]
+	Secured         config.Option[*secured]
+	AuditFile       config.Option[*auditFile]
+	AuditURL        config.Option[*auditURL]
+	canCompress     codings // MUST contain at least one element. [codingIdentity] MUST be the last element
+	canDecompress   map[coding]struct{}
 }
 
 type codings []coding

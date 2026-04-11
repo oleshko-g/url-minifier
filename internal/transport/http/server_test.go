@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 	"github.com/oleshko-g/url-minifier/internal/storage"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
@@ -25,18 +26,18 @@ type testMinifierResponse struct {
 type testApp struct {
 	minifierConfig *minifier.Config
 	*Config
-	storage.PingerCloser
+	*storage.Storage
 	*minifier.Service
 	*Server
 }
 
 func newTestApp() *testApp {
 	var ta testApp
-
-	ta.PingerCloser = memory.NewStrRecords()
+	ta.Storage = new(storage.Storage)
+	ta.Storage.Storager = memory.NewStrRecords()
 	ta.minifierConfig = minifier.NewConfig()
 	ta.minifierConfig.BaseURL.Set(ta.minifierConfig.BaseURL.Default)
-	ta.Service = minifier.New(ta.PingerCloser, ta.minifierConfig)
+	ta.Service = minifier.New(ta.Storage, ta.minifierConfig)
 	ta.Config = NewConfig()
 	ta.Config.Address.Set(ta.Config.Address.Default)
 	ta.Server = NewServer(ta.Service, ta.Config)
@@ -123,7 +124,7 @@ func TestServer_unMinifyURLHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta.PingerCloser.Save(tt.minifiedID, tt.originalURL)
+			ta.Storage.Save(tt.minifiedID, tt.originalURL)
 
 			req := httptest.NewRequest("GET", "/"+tt.minifiedID, nil)
 			req.SetPathValue("id", tt.minifiedID)
@@ -214,7 +215,7 @@ func TestServer_chooseCompression(t *testing.T) {
 	}
 	tests := []struct {
 		name                string // description of this test case
-		s                   Service
+		s                   service.Minifier
 		parsedAcceptCodings map[coding]qualityValue
 		want                chooseCompressionResult
 	}{

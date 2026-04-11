@@ -32,3 +32,13 @@ var UpdateStringDeletedAt string
 //
 //go:embed selectUserString.sql
 var SelectUserString string
+
+// SelectCountUserStrings returns the count of user strings
+//
+//go:embed selectCountUserStrings.sql
+var SelectCountUserStrings string
+
+// SelectCountUsers returns the count of users
+//
+//go:embed selectCountUsers.sql
+var SelectCountUsers string

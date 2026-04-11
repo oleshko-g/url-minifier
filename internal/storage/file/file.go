@@ -16,20 +16,23 @@ import (
 	storageErrors "github.com/oleshko-g/url-minifier/internal/storage/errors"
 )
 
+var (
+	_ storage.Storager = (*File)(nil)
+	_ io.Closer        = (*File)(nil)
+)
+
 // New returns a pointer to an opened [File] or an error
-func New(c *Config) (file storage.PingerCloser, err error) {
+func New(c *Config) (file *File, err error) {
 	fp, err := os.OpenFile(c.FilePath.String(), os.O_RDWR|os.O_CREATE|os.O_APPEND, filePerm)
 	if err != nil {
 		return nil, err
 	}
 
-	return storage.NewNoOpPingerClose(
-			&File{
-				p:      fp,
-				mux:    sync.RWMutex{},
-				Config: c,
-			}),
-		nil
+	return &File{
+		p:      fp,
+		mux:    sync.RWMutex{},
+		Config: c,
+	}, nil
 }
 
 // File is a filesystem implementation of [minifier.Storager]
@@ -39,8 +42,6 @@ type File struct {
 	p   *os.File
 	*Config
 }
-
-var _ storage.Storager = (*File)(nil)
 
 // Close closes the underlying [os.File] of the [File]
 func (f *File) Close() error {

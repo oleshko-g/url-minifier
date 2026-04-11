@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -15,13 +16,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/oleshko-g/url-minifier/internal/service"
 	"github.com/oleshko-g/url-minifier/internal/service/minifier"
 )
 
 // Server is the internal implementation of [http.Server]
 type Server struct {
 	server *http.Server
-	Service
+	service.Minifier
 	*Config
 	logger
 	auditors      []auditor
@@ -30,33 +32,25 @@ type Server struct {
 
 // Shutdown shuts down the underlying HTTP server gracefully
 func (s *Server) Shutdown(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
+	err := s.server.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	return s.close()
 }
 
-// Close closes the underlying [Service] and all the audit subjects
-func (s *Server) Close() error {
+// close closes the underlying [service.Minifier] and all the audit subjects
+func (s *Server) close() error {
 	for _, ch := range s.auditSubjects {
 		close(ch)
 	}
 
-	return s.Service.Close()
+	return s.Minifier.Close()
 }
 
-// Service is the expected URL minifier service
-//
-//go:generate moq -pkg minifier -out ../../mock/service/service.go . Service
-type Service interface {
-	MinifyURL(ctx context.Context, userID string, url string) (minifiedURL string, err error)
-
-	MinifyURLs(ctx context.Context, userID string,
-		urls []map[string]string) (minifiedURLs []map[string]string, err error)
-	UnMinifyURL(id string) (url string, err error)
-	UserURLs(ctx context.Context, userID string) ([]minifier.URL, error)
-	// DeleteUserURLs deletes a batch of shortened URLs
-	DeleteUserURLs(ctx context.Context, userID string, minifiedIDs []string) error
-	UnMinifyUserURL(ctx context.Context, id string) (url string, isDeleted bool, err error)
-	Ping() error
-	io.Closer
+func (s *Server) Serve(l net.Listener) error {
+	return s.server.Serve(l)
 }
 
 type logger interface {
@@ -66,11 +60,11 @@ type logger interface {
 }
 
 // NewServer configures and returns an internal [http.Server]
-func NewServer(s Service, cfg *Config) *Server {
+func NewServer(s service.Minifier, cfg *Config) *Server {
 	srv := &Server{
-		Service: s,
-		server:  &http.Server{},
-		Config:  cfg,
+		Minifier: s,
+		server:   &http.Server{},
+		Config:   cfg,
 	}
 	srv.Config.canDecompress = map[coding]struct{}{codingGZIP: {}}
 	srv.Config.canCompress = []coding{codingGZIP, codingIdentity}
@@ -100,28 +94,34 @@ func NewServer(s Service, cfg *Config) *Server {
 		}
 	}
 
+	srv.setHandler()
+
+	return srv
+}
+
+func (s *Server) setHandler() {
 	r := chi.NewRouter()
-	r.Use(srv.withLoggingMiddleware)
+	r.Use(s.withLoggingMiddleware)
 
-	r.Get("/ping", srv.pingHandler())
+	r.Get("/ping", s.pingHandler())
 	r.Route("/", func(r chi.Router) {
-		r.Use(srv.withEncodingMiddleware)
-		r.Use(srv.withAuthorization)
+		r.Use(s.withEncodingMiddleware)
+		r.Use(s.withAuthorization)
 
-		r.Get("/{id}", srv.newAuditedHandler("follow", srv.unMinifyURLHandler()))
-		r.Post("/", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLHandler())))
+		r.Get("/{id}", s.newAuditedHandler("follow", s.unMinifyURLHandler()))
+		r.Post("/", s.newAuditedHandler("shorten", s.authorized(s.minifyURLHandler())))
 		r.Route("/api", func(r chi.Router) {
-			r.Post("/shorten", srv.newAuditedHandler("shorten", srv.authorized(srv.minifyURLJSONHandler())))
-			r.Post("/shorten/batch", srv.authorized(srv.minifyURLsHandler()))
-			r.Get("/user/urls", srv.authorized(srv.userURLsHandler()))
-			r.Delete("/user/urls", srv.authorized(srv.deleteUserURLsHandler()))
+			r.Post("/shorten", s.newAuditedHandler("shorten", s.authorized(s.minifyURLJSONHandler())))
+			r.Post("/shorten/batch", s.authorized(s.minifyURLsHandler()))
+			r.Get("/user/urls", s.authorized(s.userURLsHandler()))
+			r.Delete("/user/urls", s.authorized(s.deleteUserURLsHandler()))
+			r.Get("/internal/stats", s.statsHandler())
 		})
 	})
 	r.Get("/debug/pprof/profile", pprof.Profile)
 	r.Method("GET", "/debug/pprof/heap", pprof.Handler("heap"))
-	srv.server.Handler = r
 
-	return srv
+	s.server.Handler = r
 }
 
 // ListenAndServe starts underlying [http.Server]
@@ -220,7 +220,7 @@ var errNoCompressionChosen = errors.New("the client has forbidden every coding w
 func (s *Server) pingHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		defer req.Body.Close()
-		err := s.Service.Ping()
+		err := s.Minifier.Ping()
 		if err != nil {
 			responseWithError(res, err, http.StatusInternalServerError)
 			s.logger.Error(err.Error())
@@ -267,7 +267,7 @@ func (s *Server) minifyURLHandler() handlerWithUserID {
 
 		s.logger.Info(fmt.Sprintf("Original URL: %s", url))
 
-		minifiedURL, err := s.Service.MinifyURL(ctx, userID, url.String())
+		minifiedURL, err := s.Minifier.MinifyURL(ctx, userID, url.String())
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
@@ -302,7 +302,7 @@ func (s *Server) unMinifyURLHandler() http.HandlerFunc {
 			return
 		}
 		ctx := req.Context()
-		url, isDeleted, err := s.Service.UnMinifyUserURL(ctx, id)
+		url, isDeleted, err := s.Minifier.UnMinifyUserURL(ctx, id)
 		if err != nil {
 			responseWithError(res, err, http.StatusBadRequest)
 			s.logger.Error(err.Error())
@@ -359,7 +359,7 @@ func (s *Server) minifyURLJSONHandler() handlerWithUserID {
 
 		// handle request
 		ctx := req.Context()
-		minifiedURL, err := s.Service.MinifyURL(ctx, userID, reqBody.URL)
+		minifiedURL, err := s.Minifier.MinifyURL(ctx, userID, reqBody.URL)
 		statusCode := http.StatusCreated
 		if err != nil {
 			if !errors.Is(err, minifier.ErrMinifiedAlready) {
@@ -583,7 +583,7 @@ func (s *Server) deleteUserURLsHandler() handlerWithUserID {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
-			err := s.Service.DeleteUserURLs(ctx, userID, minifiedIDs)
+			err := s.Minifier.DeleteUserURLs(ctx, userID, minifiedIDs)
 			if err != nil {
 				s.logger.Error(err.Error())
 			}

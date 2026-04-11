@@ -7,6 +7,7 @@ import (
 
 type Option[T flag.Value] struct {
 	Name        string
+	EnVarName   string
 	Value       T
 	Description string
 	Default     string
@@ -33,6 +34,7 @@ func (receiver Option[T]) String() string {
 func NewPath() Option[*Path] {
 	return Option[*Path]{
 		Name:        "c",
+		EnVarName:   "CONFIG",
 		Value:       new(Path),
 		Description: "The path to the config file which is applied first and then gets overridden by flags or env vars",
 		Default:     "",
@@ -57,4 +59,5 @@ type File struct {
 	FileStoragePath string `json:"file_storage_path" default:""`            // FILE_STORAGE_PATH flag -f
 	DatabaseDSN     string `json:"database_dsn" default:""`                 // DATABASE_DSN or flag -d
 	EnableHTTPS     bool   `json:"enable_https" default:""`                 // ENABLE_HTTPS or flag -s
+	TrustedIPSubnet string `json:"trusted_ip_subnet" default:""`            // TRUSTED_SUBNET or flag -t
 }

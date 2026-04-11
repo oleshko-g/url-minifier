@@ -13,6 +13,7 @@ func NewConfig() Config {
 	return Config{
 		DSN: config.Option[*dataSource]{
 			Name:        "d",
+			EnVarName:   "DATABASE_DSN",
 			Value:       new(dataSource),
 			Description: "Set the sql db connection string",
 			Default:     "",

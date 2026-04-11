@@ -14,6 +14,7 @@ func NewConfig() *Config {
 	return &Config{
 		BaseURL: config.Option[*baseURL]{
 			Name:        "b",
+			EnVarName:   "BASE_URL",
 			Value:       new(baseURL),
 			Description: fmt.Sprintf("Default: `%s`. Set the base URL for minified URLs", defaultBaseURL),
 			Default:     defaultBaseURL,

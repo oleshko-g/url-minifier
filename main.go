@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/oleshko-g/url-minifier/internal/config"
@@ -19,6 +20,7 @@ import (
 	"github.com/oleshko-g/url-minifier/internal/storage/db/sql"
 	"github.com/oleshko-g/url-minifier/internal/storage/file"
 	"github.com/oleshko-g/url-minifier/internal/storage/memory"
+	"github.com/oleshko-g/url-minifier/internal/transport/grpc"
 	"github.com/oleshko-g/url-minifier/internal/transport/http"
 )
 
@@ -31,114 +33,127 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer cancel(nil)
-
-	go func() {
-		cancel(a.Server.ListenAndServe())
-		defer slog.Info(fmt.Sprintf("cause: %s", ctx.Err()))
-		<-ctx.Done()
-		err := a.Server.Close()
-		if err != nil {
-			slog.Error("failed a graceful shutdown", "error", err.Error())
-			return
-		}
-		slog.Info("shutdown the HTTP server gracefully")
-	}()
+	errCh := a.start()
 
 	shutdownSignal := make(chan os.Signal, 1)
 	signal.Notify(shutdownSignal, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	sig := <-shutdownSignal
-	slog.Info(fmt.Sprintf("received the [%s] os.Signal. Shutting down gracefully...", sig.String()))
-	cancel(a.Server.Shutdown(ctx))
+
+	select {
+	case err := <-errCh:
+		slog.Info(fmt.Sprintf("received the error: [%s] ", err.Error()))
+	case sig := <-shutdownSignal:
+		slog.Info(fmt.Sprintf("received the os.Signal: [%s] ", sig.String()))
+	}
+
+	slog.Info("Shutting down gracefully...")
+
+	err := a.stop()
+	if err != nil {
+		slog.Error(err.Error())
+	}
 }
 
 type app struct {
-	configFilePath config.Option[*config.Path]
-	configFile     *config.File
+	http struct {
+		*http.Server
+		*http.Config
+	}
+	grpc struct {
+		*grpc.Server
+		*grpc.Config
+	}
+	minifier struct {
+		*minifier.Config
+		*minifier.Service
+	}
+	storage.Storage
 	sqlConfig      db.Config
 	fileConfig     *file.Config
-	minifierConfig *minifier.Config
-	httpConfig     *http.Config
-	storage.PingerCloser
-	*minifier.Service
-	*http.Server
+	configFilePath config.Option[*config.Path]
+	configFile     *config.File
 }
 
 func (a *app) setup() (err error) {
 	// Set the default config values
 	a.configFilePath = config.NewPath()
-	a.httpConfig = http.NewConfig()
+	a.grpc.Config = grpc.NewConfig()
+	a.http.Config = http.NewConfig()
 	a.sqlConfig = db.NewConfig()
 	a.fileConfig = file.NewConfig()
-	a.minifierConfig = minifier.NewConfig()
+	a.minifier.Config = minifier.NewConfig()
 
 	err = a.fileConfig.FilePath.Set(a.fileConfig.FilePath.Default)
 	if err != nil {
 		return err
 	}
-	err = a.minifierConfig.BaseURL.Set(a.minifierConfig.BaseURL.Default)
+	err = a.minifier.Config.BaseURL.Set(a.minifier.Config.BaseURL.Default)
 	if err != nil {
 		return err
 	}
-	err = a.httpConfig.Address.Set(a.httpConfig.Address.Default)
+	err = a.http.Config.Address.Set(a.http.Config.Address.Default)
 	if err != nil {
 		return err
 	}
 
 	// If an env var is present then it overrides the default value or the flag value
 	godotenv.Load(".env")
-	if cfgFilePath := os.Getenv("CONFIG"); cfgFilePath != "" {
+	if cfgFilePath := os.Getenv(a.configFilePath.EnVarName); cfgFilePath != "" {
 		if err = a.configFilePath.Set(cfgFilePath); err != nil {
 			return err
 		}
 		a.configFilePath.Source = config.SourceEnv
 	}
-	if dbConn := os.Getenv("DATABASE_DSN"); dbConn != "" {
+	if dbConn := os.Getenv(a.sqlConfig.DSN.EnVarName); dbConn != "" {
 		// sets err func (a *app) setup()
 		if err = a.sqlConfig.DSN.Set(dbConn); err != nil {
 			return err
 		}
 		a.sqlConfig.DSN.Source = config.SourceEnv
 	}
-	if filePath := os.Getenv("FILE_STORAGE_PATH"); filePath != "" {
+	if filePath := os.Getenv(a.fileConfig.FilePath.EnVarName); filePath != "" {
 		// sets err func (a *app) setup()
 		if err = a.fileConfig.FilePath.Set(filePath); err != nil {
 			return err
 		}
 		a.fileConfig.FilePath.Source = config.SourceEnv
 	}
-	if secured := os.Getenv("ENABLE_HTTPS"); secured != "" {
-		if err = a.httpConfig.Secured.Set(secured); err != nil {
+	if trustedSubnet := os.Getenv(a.http.Config.TrustedIPSubnet.EnVarName); trustedSubnet != "" {
+		if err = a.http.Config.TrustedIPSubnet.Set(trustedSubnet); err != nil {
 			return err
 		}
-		a.httpConfig.Secured.Source = config.SourceEnv
+		a.http.Config.TrustedIPSubnet.Source = config.SourceEnv
 	}
-	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
-		if err = a.httpConfig.Address.Set(serverAddress); err != nil {
+	if secured := os.Getenv(a.http.Config.Secured.EnVarName); secured != "" {
+		if err = a.http.Config.Secured.Set(secured); err != nil {
 			return err
 		}
-		a.httpConfig.Address.Source = config.SourceEnv
+		a.http.Config.Secured.Source = config.SourceEnv
+	}
+	if serverAddress := os.Getenv(a.http.Config.Address.EnVarName); serverAddress != "" {
+		if err = a.http.Config.Address.Set(serverAddress); err != nil {
+			return err
+		}
+		a.http.Config.Address.Source = config.SourceEnv
 	}
 
-	if auditFile := os.Getenv("AUDIT_FILE"); auditFile != "" {
-		if err = a.httpConfig.AuditFile.Set(auditFile); err != nil {
+	if auditFile := os.Getenv(a.http.Config.AuditFile.EnVarName); auditFile != "" {
+		if err = a.http.Config.AuditFile.Set(auditFile); err != nil {
 			return err
 		}
-		a.httpConfig.AuditFile.Source = config.SourceEnv
+		a.http.Config.AuditFile.Source = config.SourceEnv
 	}
 
-	if auditURL := os.Getenv("AUDIT_URL"); auditURL != "" {
-		if err = a.httpConfig.AuditURL.Set(auditURL); err != nil {
+	if auditURL := os.Getenv(a.http.Config.AuditURL.EnVarName); auditURL != "" {
+		if err = a.http.Config.AuditURL.Set(auditURL); err != nil {
 			return err
 		}
-		a.httpConfig.AuditURL.Source = config.SourceEnv
+		a.http.Config.AuditURL.Source = config.SourceEnv
 	}
-	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
-		if err = a.minifierConfig.BaseURL.Set(baseURL); err != nil {
+	if baseURL := os.Getenv(a.minifier.Config.BaseURL.EnVarName); baseURL != "" {
+		if err = a.minifier.Config.BaseURL.Set(baseURL); err != nil {
 			return err
 		}
-		a.minifierConfig.BaseURL.Source = config.SourceEnv
+		a.minifier.Config.BaseURL.Source = config.SourceEnv
 	}
 
 	// set flags
@@ -156,45 +171,67 @@ func (a *app) setup() (err error) {
 		if err := d.Decode(&a.configFile); err != nil {
 			return err
 		}
-		fmt.Printf("%v\n", a.configFile)
+		fmt.Printf("%#v\n", a.configFile)
 
 		// override only the defaults
-		if a.configFile.BaseURL != "" && a.minifierConfig.BaseURL.Source == config.SourceDefault {
-			a.minifierConfig.BaseURL.Set(a.configFile.BaseURL)
+		if a.configFile.BaseURL != "" && a.minifier.Config.BaseURL.Source == config.SourceDefault {
+			a.minifier.Config.BaseURL.Set(a.configFile.BaseURL)
+			a.minifier.Config.BaseURL.Source = config.SourceFile
 		}
 		if a.configFile.DatabaseDSN != "" && a.sqlConfig.DSN.Source == config.SourceDefault {
 			a.sqlConfig.DSN.Set(a.configFile.DatabaseDSN)
+			a.sqlConfig.DSN.Source = config.SourceFile
 		}
 		if a.configFile.FileStoragePath != "" && a.fileConfig.FilePath.Source == config.SourceDefault {
 			a.fileConfig.FilePath.Set(a.configFile.FileStoragePath)
+			a.fileConfig.FilePath.Source = config.SourceFile
 		}
-		if a.configFile.EnableHTTPS && a.httpConfig.Secured.Source == config.SourceDefault {
-			a.httpConfig.Secured.Set(strconv.FormatBool(a.configFile.EnableHTTPS))
+		if a.configFile.EnableHTTPS && a.http.Config.Secured.Source == config.SourceDefault {
+			a.http.Config.Secured.Set(strconv.FormatBool(a.configFile.EnableHTTPS))
+			a.http.Config.Secured.Source = config.SourceFile
 		}
-		if a.configFile.ServerAddress != "" && a.httpConfig.Address.Source == config.SourceDefault {
-			a.httpConfig.Address.Set(a.configFile.ServerAddress)
+		if a.configFile.ServerAddress != "" && a.http.Config.Address.Source == config.SourceDefault {
+			a.http.Config.Address.Set(a.configFile.ServerAddress)
+			a.http.Config.Address.Source = config.SourceFile
+		}
+		if a.configFile.TrustedIPSubnet != "" && a.http.Config.TrustedIPSubnet.Source == config.SourceDefault {
+			a.http.Config.TrustedIPSubnet.Set(a.configFile.TrustedIPSubnet)
+			a.http.Config.TrustedIPSubnet.Source = config.SourceFile
 		}
 
 		return nil
 	})
 	flag.Var(a.sqlConfig.DSN, a.sqlConfig.DSN.Name, a.sqlConfig.DSN.Description)
 	flag.Var(a.fileConfig.FilePath, a.fileConfig.FilePath.Name, a.fileConfig.FilePath.Description)
-	flag.Var(a.httpConfig.Secured, a.httpConfig.Secured.Name, a.httpConfig.Secured.Description)
-	flag.Var(a.httpConfig.Address, a.httpConfig.Address.Name, a.httpConfig.Address.Description)
-	flag.Var(a.httpConfig.AuditFile, a.httpConfig.AuditFile.Name, a.httpConfig.AuditFile.Description)
-	flag.Var(a.httpConfig.AuditURL, a.httpConfig.AuditURL.Name, a.httpConfig.AuditURL.Description)
-	flag.Var(a.minifierConfig.BaseURL, a.minifierConfig.BaseURL.Name, a.minifierConfig.BaseURL.Description)
+	flag.Var(a.http.Config.Secured, a.http.Config.Secured.Name, a.http.Config.Secured.Description)
+	flag.Var(a.http.Config.TrustedIPSubnet, a.http.Config.TrustedIPSubnet.Name, a.http.Config.TrustedIPSubnet.Description)
+	flag.Var(a.http.Config.Address, a.http.Config.Address.Name, a.http.Config.Address.Description)
+	flag.Var(a.http.Config.AuditFile, a.http.Config.AuditFile.Name, a.http.Config.AuditFile.Description)
+	flag.Var(a.http.Config.AuditURL, a.http.Config.AuditURL.Name, a.http.Config.AuditURL.Description)
+	flag.Var(a.minifier.Config.BaseURL, a.minifier.Config.BaseURL.Name, a.minifier.Config.BaseURL.Description)
 	// If flags are present then [flag.Parse] overrides defaults or env vars.
 	flag.Parse()
 
 	if a.sqlConfig.DSN.String() != "" {
-		a.PingerCloser, err = sql.New(a.sqlConfig)
+		sqlStorage, err := sql.New(a.sqlConfig)
+		if err != nil {
+			return err
+		}
+		a.Storage.Storager = sqlStorage
+		a.Storage.Pinger = sqlStorage
+		a.Storage.Closer = sqlStorage
+		a.Storage.Counter = sqlStorage
 		slog.Info("The storage is set to db.")
 	} else if a.fileConfig.FilePath.String() != "" {
-		a.PingerCloser, err = file.New(a.fileConfig)
+		fileStorage, err := file.New(a.fileConfig)
+		if err != nil {
+			return err
+		}
+		a.Storage.Storager = fileStorage
+		a.Storage.Closer = fileStorage
 		slog.Info("The storage is set to file.")
 	} else {
-		a.PingerCloser = memory.NewStrRecords()
+		a.Storage.Storager = memory.NewStrRecords()
 		slog.Info("The storage is set to memory.")
 	}
 
@@ -202,11 +239,71 @@ func (a *app) setup() (err error) {
 		return err
 	}
 
-	a.Service = minifier.New(a.PingerCloser, a.minifierConfig)
-	a.Server = http.NewServer(a.Service, a.httpConfig)
+	a.minifier.Service = minifier.New(&a.Storage, a.minifier.Config)
+	a.http.Server = http.NewServer(a.minifier.Service, a.http.Config)
+	a.grpc.Server = grpc.NewServer(a.grpc.Config, a.minifier.Service)
 
-	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.Service.Config.BaseURL.String()))
-	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.Server.Config.Address.String()))
+	slog.Info(fmt.Sprintf("Base URL is set to `%s`", a.minifier.Service.Config.BaseURL.String()))
+	slog.Info(fmt.Sprintf("Server Address is set to `%s`", a.http.Server.Config.Address.String()))
+
+	return nil
+}
+
+func (a *app) start() <-chan error {
+	errCh := make(chan error, 2)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	go func() {
+		err := a.http.Server.ListenAndServe()
+		cancel(err)
+		errCh <- err
+		slog.Info("The HTTP listener returned.", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
+	}()
+
+	go func() {
+		err := a.grpc.Server.ListenAndServe()
+		cancel(err)
+		errCh <- err
+		slog.Info("The gRPC listener returned.", "ctx.Err()", ctx.Err(), "cause", context.Cause(ctx))
+	}()
+
+	return errCh
+}
+
+func (a *app) stop() error {
+	errCh := make(chan error, 1)
+	successCh := make(chan struct{}, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	go func() {
+		err := a.grpc.Server.GracefulStop()
+		if err != nil {
+			slog.Error("The gRPC server failed stop gracefully ", "error", err.Error())
+			errCh <- err
+			return
+		}
+		successCh <- struct{}{}
+		slog.Info("The gRPC server stopped gracefully")
+	}()
+
+	go func() {
+		err := a.http.Server.Shutdown(ctx)
+		if err != nil {
+			slog.Error("The HTTP server failed to shutdown gracefully", "error", err.Error())
+			errCh <- err
+			return
+		}
+		successCh <- struct{}{}
+		slog.Info("The HTTP server shutdown gracefully")
+	}()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errCh:
+			return err
+		case <-successCh:
+		}
+	}
 
 	return nil
 }
